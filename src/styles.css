@@ -112,6 +112,89 @@ pre {
   gap: 16px;
 }
 
+.app-shell.orientation-vertical .topbar,
+.app-shell.orientation-vertical .workspace {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.orientation-vertical .popular-card {
+  text-align: left;
+}
+
+.app-shell.orientation-vertical .turnout-pill {
+  justify-self: start;
+}
+
+.app-shell.orientation-vertical .map-toolbar {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.device-phone {
+  padding: 12px;
+  gap: 12px;
+}
+
+.app-shell.device-phone .brand-copy h1,
+.app-shell.device-phone .popular-card strong {
+  font-size: 24px;
+}
+
+.app-shell.device-phone .poll-question {
+  font-size: 18px;
+}
+
+.app-shell.device-phone .map-stage-label {
+  width: auto;
+  max-width: calc(100% - 32px);
+}
+
+.app-shell.device-phone .map-pin span {
+  display: none;
+}
+
+.app-shell.device-phone .composer {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.device-phone .send-button {
+  min-height: 54px;
+}
+
+.app-shell.device-phone .admin-option-row,
+.app-shell.device-phone .summary-output-top,
+.app-shell.device-phone .brand-footer {
+  grid-template-columns: 1fr;
+  display: grid;
+}
+
+.app-shell.device-phone .feed-item-top {
+  flex-direction: column;
+}
+
+.app-shell.device-phone.orientation-vertical .poll-options,
+.app-shell.device-phone.orientation-vertical .metric-grid,
+.app-shell.device-phone.orientation-vertical .context-strip {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.device-phone.orientation-vertical .map-stage {
+  aspect-ratio: 4 / 5;
+  min-height: 420px;
+}
+
+.app-shell.device-phone.orientation-horizontal .poll-options {
+  grid-template-columns: 1fr 1fr;
+}
+
+.app-shell.device-phone.orientation-horizontal .metric-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.app-shell.device-phone.orientation-horizontal .map-stage {
+  aspect-ratio: 16 / 9;
+  min-height: 320px;
+}
+
 .topbar {
   display: grid;
   grid-template-columns: 290px minmax(420px, 1fr) 240px;
@@ -477,12 +560,6 @@ pre {
 .map-stage.level2 img {
   transform: scale(1.03);
   transform-origin: center center;
-}
-
-.map-stage.level5 img {
-  transform: scale(1.86) translateY(28%);
-  transform-origin: center top;
-  opacity: 0.9;
 }
 
 .map-stage-label,

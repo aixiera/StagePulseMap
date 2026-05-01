@@ -27,11 +27,6 @@ const LEVELS = {
     image: "/scienceworld-level2.png",
     caption: "Feature exhibition, labs, snack area, and roaming pulses",
   },
-  level5: {
-    label: "OMNIMAX",
-    image: "/scienceworldmap.png",
-    caption: "Theatre spotlight, cinematic moments, and big reveal cues",
-  },
 };
 
 const CATEGORIES = ["Question", "Praise", "Need Help", "Long Line", "Fun"];
@@ -172,24 +167,6 @@ const INITIAL_BOOTHS = [
         "Food area line is growing near Snack Lab.",
         minutesAgo(1),
         "audience-131"
-      ),
-    ],
-  },
-  {
-    id: "omnimax",
-    name: "OMNIMAX Theatre",
-    shortName: "OMNIMAX",
-    level: "level5",
-    x: 36,
-    y: 19,
-    color: "cyan",
-    pulses: [
-      seedPulse(
-        "p-omni-1",
-        "Fun",
-        "Could OMNIMAX light up when the live vote spikes?",
-        minutesAgo(9),
-        "audience-151"
       ),
     ],
   },
@@ -345,6 +322,30 @@ function displayPollLabel(label, index) {
   return label.trim() || `Option ${index + 1}`;
 }
 
+function getViewportProfile() {
+  if (typeof window === "undefined") {
+    return {
+      device: "laptop",
+      orientation: "horizontal",
+    };
+  }
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const shortestSide = Math.min(width, height);
+  const longestSide = Math.max(width, height);
+  const coarsePointer =
+    window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0;
+
+  const orientation = width >= height ? "horizontal" : "vertical";
+  const device =
+    width <= 900 || (coarsePointer && shortestSide <= 900 && longestSide <= 1400)
+      ? "phone"
+      : "laptop";
+
+  return { device, orientation };
+}
+
 function buildSummaryPrompt(pulses, duplicateGroups, selectedBooth) {
   const pulseLines = pulses
     .slice(0, 18)
@@ -467,6 +468,7 @@ function App() {
   const [apiKeyDraft, setApiKeyDraft] = useState(
     readStoredJson("stagepulse-openai-v1", INITIAL_OPENAI_SETTINGS).browserKey ?? ""
   );
+  const [viewportProfile, setViewportProfile] = useState(() => getViewportProfile());
 
   useEffect(() => {
     writeStoredJson("stagepulse-booths-v2", booths);
@@ -504,6 +506,23 @@ function App() {
       }
     };
   }, [browserId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    function updateViewportProfile() {
+      setViewportProfile(getViewportProfile());
+    }
+
+    updateViewportProfile();
+    window.addEventListener("resize", updateViewportProfile);
+    window.addEventListener("orientationchange", updateViewportProfile);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportProfile);
+      window.removeEventListener("orientationchange", updateViewportProfile);
+    };
+  }, []);
 
   useEffect(() => {
     if (!pollSelection.optionId) return;
@@ -590,6 +609,7 @@ function App() {
     : ENV_OPENAI_API_KEY
       ? "env"
       : "";
+  const viewportLabel = `${viewportProfile.device} ${viewportProfile.orientation}`;
 
   const levelPulseCount = booths
     .filter((booth) => booth.level === activeLevel)
@@ -1143,7 +1163,9 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell device-${viewportProfile.device} orientation-${viewportProfile.orientation}`}
+    >
       <header className="topbar">
         <section className="brand-panel">
           <div className="brand-meta">
@@ -1153,6 +1175,7 @@ function App() {
             </div>
             <div className="meta-chip">Cloud Summit x Science World</div>
             <div className="meta-chip">{adminMode ? "Admin mode" : "Audience mode"}</div>
+            <div className="meta-chip">Auto layout: {viewportLabel}</div>
           </div>
 
           <div className="brand-copy">
