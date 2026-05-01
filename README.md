@@ -2,6 +2,8 @@
 
 StagePulse Map is a no-login live audience interaction web app for Cloud Summit at Science World.
 
+It turns the venue map into a shared layer for audience voting, booth feedback, questions, and live comments tied to real spaces in the event.
+
 ## What it demonstrates
 
 - Audience-facing live poll at the top of the screen
