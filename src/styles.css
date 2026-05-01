@@ -290,6 +290,11 @@ pre {
   min-height: 64px;
 }
 
+.poll-choice.selected {
+  border-color: rgba(71, 246, 170, 0.52);
+  box-shadow: 0 0 0 1px rgba(71, 246, 170, 0.18) inset;
+}
+
 .poll-choice::before {
   content: "";
   position: absolute;
@@ -338,6 +343,7 @@ pre {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;
   gap: 16px;
+  align-items: start;
 }
 
 .map-card {
@@ -345,7 +351,8 @@ pre {
   border-radius: 32px;
   overflow: hidden;
   display: grid;
-  grid-template-rows: 74px minmax(0, 1fr) auto;
+  grid-template-rows: 74px auto auto;
+  align-self: start;
 }
 
 .map-toolbar {
@@ -421,6 +428,9 @@ pre {
 .map-stage {
   position: relative;
   overflow: hidden;
+  aspect-ratio: 16 / 10;
+  min-height: 460px;
+  max-height: 760px;
   background:
     radial-gradient(circle at 20% 0%, rgba(57, 222, 244, 0.12), transparent 34%),
     radial-gradient(circle at 88% 100%, rgba(196, 156, 255, 0.12), transparent 24%),
@@ -540,7 +550,10 @@ pre {
   font-weight: 800;
   color: #061019;
   box-shadow: 0 0 0 8px rgba(57, 222, 244, 0.08), 0 0 28px rgba(57, 222, 244, 0.54);
-  animation: floatPin 2.5s ease-in-out infinite;
+  transition:
+    box-shadow 180ms ease,
+    outline-color 180ms ease,
+    border-color 180ms ease;
 }
 
 .map-pin span,
@@ -580,14 +593,9 @@ pre {
   border: 1px dashed rgba(6, 16, 25, 0.35);
 }
 
-@keyframes floatPin {
-  0%,
-  100% {
-    margin-top: 0;
-  }
-  50% {
-    margin-top: -4px;
-  }
+.map-pin:hover,
+.draft-pin:hover {
+  transform: translate(-50%, -50%);
 }
 
 .map-bubble {
@@ -1131,7 +1139,7 @@ textarea {
   }
 
   .map-card {
-    min-height: 780px;
+    min-height: auto;
   }
 
   .map-toolbar {
@@ -1164,7 +1172,11 @@ textarea {
   }
 
   .map-card {
-    min-height: 720px;
+    min-height: auto;
+  }
+
+  .map-stage {
+    min-height: 400px;
   }
 
   .map-stage-label {

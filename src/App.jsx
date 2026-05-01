@@ -250,6 +250,10 @@ const INITIAL_OPENAI_SETTINGS = {
   autoSummarize: false,
 };
 
+const INITIAL_POLL_SELECTION = {
+  optionId: "",
+};
+
 function readStoredJson(key, fallback) {
   if (typeof window === "undefined") return fallback;
 
@@ -438,6 +442,9 @@ function App() {
   const [poll, setPoll] = useState(() =>
     readStoredJson("stagepulse-poll-v3", INITIAL_POLL)
   );
+  const [pollSelection, setPollSelection] = useState(() =>
+    readStoredJson("stagepulse-poll-selection-v1", INITIAL_POLL_SELECTION)
+  );
   const [openAiSettings, setOpenAiSettings] = useState(() =>
     readStoredJson("stagepulse-openai-v1", INITIAL_OPENAI_SETTINGS)
   );
@@ -474,6 +481,10 @@ function App() {
   }, [poll]);
 
   useEffect(() => {
+    writeStoredJson("stagepulse-poll-selection-v1", pollSelection);
+  }, [pollSelection]);
+
+  useEffect(() => {
     writeStoredJson("stagepulse-openai-v1", openAiSettings);
   }, [openAiSettings]);
 
@@ -493,6 +504,18 @@ function App() {
       }
     };
   }, [browserId]);
+
+  useEffect(() => {
+    if (!pollSelection.optionId) return;
+
+    const selectionStillExists = poll.options.some(
+      (option) => option.id === pollSelection.optionId
+    );
+
+    if (!selectionStillExists) {
+      setPollSelection(INITIAL_POLL_SELECTION);
+    }
+  }, [poll.options, pollSelection.optionId]);
 
   const selectedBooth = booths.find((booth) => booth.id === selectedBoothId) ?? booths[0] ?? null;
   const visibleBooths = booths.filter((booth) => booth.level === activeLevel);
@@ -559,6 +582,7 @@ function App() {
   const mostPopularShare = totalVotes
     ? Math.round((mostPopularVote.votes / totalVotes) * 100)
     : 0;
+  const selectedPollOptionId = pollSelection.optionId;
 
   const activeApiKey = (openAiSettings.browserKey || ENV_OPENAI_API_KEY).trim();
   const activeApiKeySource = openAiSettings.browserKey
@@ -807,21 +831,38 @@ function App() {
 
   function handleVote(optionId) {
     const votedOption = poll.options.find((option) => option.id === optionId);
+    const previousOptionId = pollSelection.optionId;
+
+    if (previousOptionId === optionId) {
+      showToast(`Your vote is already on ${votedOption?.label ?? "this option"}.`, "success");
+      return;
+    }
 
     setPoll((prev) => ({
       ...prev,
       options: prev.options.map((option) =>
-        option.id === optionId ? { ...option, votes: option.votes + 1 } : option
+        option.id === optionId
+          ? { ...option, votes: option.votes + 1 }
+          : option.id === previousOptionId
+            ? { ...option, votes: Math.max(0, option.votes - 1) }
+            : option
       ),
     }));
+    setPollSelection({ optionId });
 
     sendObservabilityMetric({
       type: "poll-vote",
       optionId,
+      previousOptionId,
       browserId,
       createdAt: new Date().toISOString(),
     });
-    showToast(`Vote sent to ${votedOption?.label ?? "this option"}.`, "success");
+    showToast(
+      previousOptionId
+        ? `Vote moved to ${votedOption?.label ?? "this option"}.`
+        : `Vote sent to ${votedOption?.label ?? "this option"}.`,
+      "success"
+    );
   }
 
   function updatePollQuestion(value) {
@@ -868,6 +909,7 @@ function App() {
       ...prev,
       options: prev.options.map((option) => ({ ...option, votes: 0 })),
     }));
+    setPollSelection(INITIAL_POLL_SELECTION);
     showToast("Poll vote counts reset for the next demo run.", "success");
   }
 
@@ -897,6 +939,10 @@ function App() {
 
   function handleMapClick(event) {
     if (!addBoothMode) return;
+    if (draftBooth) {
+      showToast("This booth point is already placed. Create it or cancel it before placing another.", "warning");
+      return;
+    }
 
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(8, Math.min(92, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
@@ -928,6 +974,7 @@ function App() {
       x: draftBooth.x,
       y: draftBooth.y,
       color: draftBooth.color,
+      custom: true,
       pulses: [
         {
           id: createId("pulse"),
@@ -953,6 +1000,39 @@ function App() {
       createdAt,
     });
     showToast("New booth added to the live map.", "success");
+  }
+
+  function removeSelectedBooth() {
+    if (!selectedBooth?.custom) {
+      showToast("Only booths added in this demo can be removed.", "warning");
+      return;
+    }
+
+    const removedBoothId = selectedBooth.id;
+    const removedLevel = selectedBooth.level;
+
+    setBooths((prev) => prev.filter((booth) => booth.id !== removedBoothId));
+
+    const nextSelection =
+      booths.find((booth) => booth.id !== removedBoothId && booth.level === removedLevel) ??
+      booths.find((booth) => booth.id !== removedBoothId) ??
+      null;
+
+    if (nextSelection) {
+      setSelectedBoothId(nextSelection.id);
+      if (activeLevel !== nextSelection.level) {
+        setActiveLevel(nextSelection.level);
+      }
+    }
+
+    sendObservabilityMetric({
+      type: "remove-booth",
+      boothId: removedBoothId,
+      level: removedLevel,
+      browserId,
+      createdAt: new Date().toISOString(),
+    });
+    showToast("Booth removed from the live map.", "success");
   }
 
   function cancelBoothCreation() {
@@ -1102,7 +1182,8 @@ function App() {
           </div>
           <h2 className="poll-question">{poll.question}</h2>
           <p className="panel-copy">
-            Tap one option to vote. Admin can change the question and options from the stage view.
+            Each browser gets one live vote. Audience members can move their vote, but not stack
+            multiple votes from the same session.
           </p>
           <div className="poll-options">
             {poll.options.map((option, index) => {
@@ -1110,7 +1191,9 @@ function App() {
               return (
                 <button
                   key={option.id}
-                  className="poll-choice"
+                  className={`poll-choice ${
+                    selectedPollOptionId === option.id ? "selected" : ""
+                  }`}
                   style={{ "--fill": `${percent}%` }}
                   onClick={() => handleVote(option.id)}
                 >
@@ -1260,6 +1343,14 @@ function App() {
                   <strong>{levelPulseCount}</strong>
                 </div>
               </div>
+
+              {adminMode && selectedBooth?.custom && !draftBooth && (
+                <div className="new-booth-actions">
+                  <button className="secondary" onClick={removeSelectedBooth}>
+                    Remove Booth
+                  </button>
+                </div>
+              )}
 
               {draftBooth ? (
                 <div className="new-booth-form">
