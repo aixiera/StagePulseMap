@@ -5,11 +5,12 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "latest",
+    "@supabase/supabase-js": "^2.105.1",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
-  },
-  "devDependencies": {}
+    "vite": "latest"
+  }
 }
