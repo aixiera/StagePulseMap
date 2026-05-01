@@ -134,6 +134,41 @@ pre {
   gap: 12px;
 }
 
+.app-shell.device-phone .topbar,
+.app-shell.device-phone .workspace {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.device-phone .popular-card {
+  text-align: left;
+}
+
+.app-shell.device-phone .turnout-pill {
+  justify-self: start;
+}
+
+.app-shell.device-phone .map-toolbar {
+  grid-template-columns: 1fr;
+}
+
+.app-shell.device-phone .search-box {
+  width: 100%;
+}
+
+.app-shell.device-phone .level-tabs {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-shell.device-phone .level-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.app-shell.device-phone .level-tabs button {
+  flex: 1 0 auto;
+}
+
 .app-shell.device-phone .brand-copy h1,
 .app-shell.device-phone .popular-card strong {
   font-size: 24px;
@@ -179,20 +214,25 @@ pre {
 
 .app-shell.device-phone.orientation-vertical .map-stage {
   aspect-ratio: 4 / 5;
-  min-height: 420px;
+  min-height: 360px;
 }
 
 .app-shell.device-phone.orientation-horizontal .poll-options {
   grid-template-columns: 1fr 1fr;
 }
 
-.app-shell.device-phone.orientation-horizontal .metric-grid {
+.app-shell.device-phone.orientation-horizontal .metric-grid,
+.app-shell.device-phone.orientation-horizontal .context-strip {
   grid-template-columns: 1fr 1fr;
 }
 
 .app-shell.device-phone.orientation-horizontal .map-stage {
   aspect-ratio: 16 / 9;
-  min-height: 320px;
+  min-height: 280px;
+}
+
+.app-shell.device-phone .map-bubble {
+  width: min(220px, calc(100vw - 64px));
 }
 
 .topbar {
