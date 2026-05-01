@@ -234,6 +234,7 @@ const INITIAL_POLL_SELECTION = {
 };
 
 const POLL_CONFIG_STORAGE_KEY = "stagepulse-poll-config-v1";
+const STAGEPULSE_META_PREFIX = "__stagepulse__";
 
 function readStoredJson(key, fallback) {
   if (typeof window === "undefined") return fallback;
@@ -289,6 +290,55 @@ function fallbackShortName(name) {
   return name.length > 18 ? `${name.slice(0, 18)}...` : name;
 }
 
+function encodeStagePulseMeta(kind, payload) {
+  return `${STAGEPULSE_META_PREFIX}${kind}:${JSON.stringify(payload)}`;
+}
+
+function decodeStagePulseMeta(value, kind) {
+  if (typeof value !== "string") return null;
+
+  const prefix = `${STAGEPULSE_META_PREFIX}${kind}:`;
+  if (!value.startsWith(prefix)) return null;
+
+  try {
+    return JSON.parse(value.slice(prefix.length));
+  } catch {
+    return null;
+  }
+}
+
+function createUuid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `spm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function encodeBoothColorField(booth) {
+  return encodeStagePulseMeta("booth", {
+    level: booth.level,
+    color: booth.color,
+    custom: booth.custom,
+  });
+}
+
+function encodeQuestionTextField(question) {
+  return encodeStagePulseMeta("question", {
+    text: question.text,
+    type: question.type,
+    browserId: question.browserId,
+  });
+}
+
+function encodePollVoteOptionField(vote) {
+  return encodeStagePulseMeta("vote", {
+    browserId: vote.browserId,
+    optionId: vote.optionId,
+    optionLabel: vote.optionLabel,
+  });
+}
+
 function parseCoordinate(value, fallback) {
   const nextValue = Number(value);
   return Number.isFinite(nextValue) ? nextValue : fallback;
@@ -297,17 +347,22 @@ function parseCoordinate(value, fallback) {
 function normalizeBoothRow(row, index = 0) {
   if (!row) return null;
 
-  const name = row.name ?? row.title ?? `Booth ${index + 1}`;
+  const metadata = decodeStagePulseMeta(row.color, "booth") ?? {};
+  const rawColor = metadata.color ?? row.color;
+  const name = row.label ?? row.name ?? row.title ?? `Booth ${index + 1}`;
 
   return {
     id: String(row.id ?? row.booth_id ?? createId("booth")),
     name,
     shortName: row.short_name ?? row.shortName ?? fallbackShortName(name),
-    level: row.level ?? "level1",
+    level: metadata.level ?? row.level ?? "level1",
     x: Math.max(8, Math.min(92, parseCoordinate(row.x ?? row.x_percent, 50))),
     y: Math.max(10, Math.min(90, parseCoordinate(row.y ?? row.y_percent, 50))),
-    color: row.color ?? COLOR_ROTATION[index % COLOR_ROTATION.length],
-    custom: Boolean(row.custom ?? row.is_custom ?? false),
+    color:
+      typeof rawColor === "string" && COLOR_ROTATION.includes(rawColor)
+        ? rawColor
+        : COLOR_ROTATION[index % COLOR_ROTATION.length],
+    custom: Boolean(metadata.custom ?? row.custom ?? row.is_custom ?? true),
     createdAt: row.created_at ?? row.createdAt ?? "",
   };
 }
@@ -315,12 +370,15 @@ function normalizeBoothRow(row, index = 0) {
 function normalizeQuestionRow(row) {
   if (!row) return null;
 
+  const metadata = decodeStagePulseMeta(row.text, "question") ?? {};
+  const text = metadata.text ?? row.text ?? row.message ?? "";
+
   return {
     id: String(row.id ?? createId("question")),
     boothId: String(row.booth_id ?? row.boothId ?? ""),
-    type: row.type ?? row.category ?? "Question",
-    text: row.text ?? row.message ?? "",
-    browserId: row.browser_id ?? row.browserId ?? "stagepulse-anon",
+    type: metadata.type ?? row.type ?? row.category ?? "Question",
+    text,
+    browserId: metadata.browserId ?? row.browser_id ?? row.browserId ?? "stagepulse-anon",
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
   };
 }
@@ -328,19 +386,23 @@ function normalizeQuestionRow(row) {
 function normalizePollVoteRow(row) {
   if (!row) return null;
 
-  const optionLabel = row.option_label ?? row.optionLabel ?? row.label ?? "";
+  const metadata = decodeStagePulseMeta(row.option, "vote") ?? {};
+  const optionLabel = metadata.optionLabel ?? row.option_label ?? row.optionLabel ?? row.option ?? row.label ?? "";
 
   return {
     id: String(
       row.id ??
-        `${row.browser_id ?? row.browserId ?? "vote"}-${row.created_at ?? row.createdAt ?? Date.now()}`
+        `${metadata.browserId ?? row.browser_id ?? row.browserId ?? "vote"}-${
+          row.created_at ?? row.createdAt ?? Date.now()
+        }`
     ),
     optionId:
+      metadata.optionId ??
       row.option_id ??
       row.optionId ??
       (optionLabel ? normalizeText(optionLabel).replace(/\s+/g, "-") : createId("poll-option")),
     optionLabel,
-    browserId: row.browser_id ?? row.browserId ?? "",
+    browserId: metadata.browserId ?? row.browser_id ?? row.browserId ?? "",
     createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
   };
 }
@@ -611,6 +673,18 @@ async function searchQuestionsFromElastic(query) {
 
 function logSecurityEventToElastic(event) {
   return event;
+}
+
+function getErrorMessage(error, fallback) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && typeof error.message === "string") {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 function mapElasticHitToPulse(hit) {
@@ -1023,8 +1097,7 @@ function App() {
         } catch (error) {
           if (!isActive) return;
 
-          const messageText =
-            error instanceof Error ? error.message : "Elastic search is unavailable.";
+          const messageText = getErrorMessage(error, "Elastic search is unavailable.");
           setElasticSearchError(messageText);
           setElasticResults([]);
         } finally {
@@ -1156,13 +1229,11 @@ function App() {
     const { data, error } = await supabase
       .from("booths")
       .insert({
-        name: booth.name,
-        short_name: booth.shortName,
-        level: booth.level,
+        id: booth.id,
+        label: booth.name,
         x: booth.x,
         y: booth.y,
-        color: booth.color,
-        custom: booth.custom,
+        color: encodeBoothColorField(booth),
         created_at: booth.createdAt,
       })
       .select("*")
@@ -1183,10 +1254,9 @@ function App() {
     const { data, error } = await supabase
       .from("questions")
       .insert({
+        id: question.id,
         booth_id: question.boothId,
-        type: question.type,
-        text: question.text,
-        browser_id: question.browserId,
+        text: encodeQuestionTextField(question),
         created_at: question.createdAt,
       })
       .select("*")
@@ -1207,9 +1277,8 @@ function App() {
     const { data, error } = await supabase
       .from("poll_votes")
       .insert({
-        option_id: vote.optionId,
-        option_label: vote.optionLabel,
-        browser_id: vote.browserId,
+        id: vote.id,
+        option: encodePollVoteOptionField(vote),
         created_at: vote.createdAt,
       })
       .select("*")
@@ -1331,8 +1400,7 @@ function App() {
         showToast("Fresh AI summary generated.", "success");
       }
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : "Unable to summarize comments right now.";
+      const messageText = getErrorMessage(error, "Unable to summarize comments right now.");
       setSummaryError(messageText);
       if (!automatic) {
         showToast("OpenAI summary failed. Check the admin panel.", "error");
@@ -1397,6 +1465,7 @@ function App() {
     if (isSupabaseConfigured) {
       try {
         const insertedVote = await insertPollVoteIntoSupabase({
+          id: createUuid(),
           optionId,
           optionLabel: votedOption?.label ?? "Live Vote",
           browserId,
@@ -1405,8 +1474,7 @@ function App() {
 
         setSupabasePollVotes((prev) => upsertRowById(prev, insertedVote));
       } catch (error) {
-        const messageText =
-          error instanceof Error ? error.message : "Unable to send the vote right now.";
+        const messageText = getErrorMessage(error, "Unable to send the vote right now.");
         showToast(messageText, "error");
         return;
       }
@@ -1507,8 +1575,7 @@ function App() {
         await resetSupabasePollVotes();
         setSupabasePollVotes([]);
       } catch (error) {
-        const messageText =
-          error instanceof Error ? error.message : "Unable to reset live poll votes.";
+        const messageText = getErrorMessage(error, "Unable to reset live poll votes.");
         showToast(messageText, "error");
         return;
       }
@@ -1575,6 +1642,7 @@ function App() {
     const createdAt = new Date().toISOString();
     const cleanName = boothName.trim();
     const newBooth = {
+      id: createUuid(),
       name: cleanName,
       shortName: cleanName.length > 18 ? `${cleanName.slice(0, 18)}...` : cleanName,
       level: draftBooth.level,
@@ -1591,6 +1659,7 @@ function App() {
       if (isSupabaseConfigured) {
         const insertedBooth = await insertBoothIntoSupabase(newBooth);
         const welcomePulse = await insertQuestionIntoSupabase({
+          id: createUuid(),
           boothId: insertedBooth.id,
           type: "Fun",
           text: "New booth is live on the map. Drop the first pulse here.",
@@ -1634,8 +1703,7 @@ function App() {
       });
       showToast("New booth added to the live map.", "success");
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : "Unable to create the booth right now.";
+      const messageText = getErrorMessage(error, "Unable to create the booth right now.");
       showToast(messageText, "error");
     }
   }
@@ -1681,8 +1749,7 @@ function App() {
       });
       showToast("Booth removed from the live map.", "success");
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : "Unable to remove this booth right now.";
+      const messageText = getErrorMessage(error, "Unable to remove this booth right now.");
       showToast(messageText, "error");
     }
   }
@@ -1749,6 +1816,7 @@ function App() {
     try {
       if (isSupabaseConfigured) {
         persistedPulse = await insertQuestionIntoSupabase({
+          id: createUuid(),
           boothId: selectedBooth.id,
           type: newPulse.type,
           text: newPulse.text,
@@ -1775,8 +1843,7 @@ function App() {
         );
       }
     } catch (error) {
-      const messageText =
-        error instanceof Error ? error.message : "Unable to send the pulse right now.";
+      const messageText = getErrorMessage(error, "Unable to send the pulse right now.");
       showToast(messageText, "error");
       return;
     }
