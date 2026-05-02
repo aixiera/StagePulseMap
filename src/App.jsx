@@ -19,14 +19,26 @@ import { isSupabaseConfigured, supabase } from "./supabaseClient.js";
 
 const LEVELS = {
   level1: {
-    label: "Level 1",
     image: "/scienceworld-level1.png",
-    caption: "Main stage, sponsor booths, and high-traffic audience areas",
+    labels: {
+      en: "Level 1",
+      fr: "Niveau 1",
+    },
+    captions: {
+      en: "Main stage, sponsor booths, and high-traffic audience areas",
+      fr: "Scène principale, kiosques partenaires et zones à forte affluence",
+    },
   },
   level2: {
-    label: "Level 2",
     image: "/scienceworld-level2.png",
-    caption: "Feature exhibition, labs, snack area, and roaming pulses",
+    labels: {
+      en: "Level 2",
+      fr: "Niveau 2",
+    },
+    captions: {
+      en: "Feature exhibition, labs, snack area, and roaming pulses",
+      fr: "Exposition vedette, laboratoires, aire de collations et interactions mobiles",
+    },
   },
 };
 
@@ -37,19 +49,392 @@ const SUMMARY_MODELS = [
   {
     value: "gpt-5.4-mini",
     label: "gpt-5.4-mini",
-    helper: "Fast and cost-aware for live summaries",
+    helpers: {
+      en: "Fast and cost-aware for live summaries",
+      fr: "Rapide et économique pour les résumés en direct",
+    },
   },
   {
     value: "gpt-5.5",
     label: "gpt-5.5",
-    helper: "Best quality if speed matters less",
+    helpers: {
+      en: "Best quality if speed matters less",
+      fr: "Meilleure qualité si la rapidité compte moins",
+    },
   },
   {
     value: "gpt-4.1",
     label: "gpt-4.1",
-    helper: "Stable non-reasoning fallback",
+    helpers: {
+      en: "Stable non-reasoning fallback",
+      fr: "Solution de rechange stable sans raisonnement",
+    },
   },
 ];
+
+const LANGUAGE_STORAGE_KEY = "stagepulse-language-v1";
+const LOCALE_BY_LANGUAGE = {
+  en: "en-CA",
+  fr: "fr-CA",
+};
+
+const CATEGORY_LABELS = {
+  en: {
+    Question: "Question",
+    Praise: "Praise",
+    "Need Help": "Need Help",
+    "Long Line": "Long Line",
+    Fun: "Fun",
+  },
+  fr: {
+    Question: "Question",
+    Praise: "Bravo",
+    "Need Help": "Besoin d’aide",
+    "Long Line": "Longue file",
+    Fun: "Amusant",
+  },
+};
+
+const UI_COPY = {
+  en: {
+    languageLabel: "Language",
+    languagePromptTitle: "Choose your language",
+    languagePromptBody:
+      "Select English or French for this device. You can change it anytime from the top-left corner.",
+    chooseEnglish: "English",
+    chooseFrench: "Français",
+    live: "LIVE",
+    adminMode: "Admin mode",
+    audienceMode: "Audience mode",
+    brandDescription:
+      "Audience members scan a QR code, vote in the live poll, tap a location, and leave questions or pulses without logging in.",
+    anonymousBrowser: "Anonymous browser",
+    liveComments: "Live comments",
+    audiencePoll: "Audience Poll",
+    pollDescription:
+      "Each browser gets one live vote. Audience members can move their vote, but not stack multiple votes from the same session.",
+    mostPopularVote: "Most Popular Vote",
+    audienceVotesCaptured: (count) => `${count} audience votes captured`,
+    addBooth: "Add Booth",
+    clickMapToPlaceBooth: "Click map to place booth",
+    searchPlaceholder: "Search comments, booths, categories...",
+    addModeInstruction: "Add mode is live. Click anywhere on the current map to place a booth.",
+    defaultMapInstruction:
+      "Select a booth, write a pulse, and let the audience light up the venue map.",
+    newBoothOnLevel: (levelLabel) => `New booth on ${levelLabel}`,
+    selectedBooth: (name) => `Selected: ${name}`,
+    selectedFallback: "No booth selected",
+    currentLevel: "Current level",
+    visibleBooths: "Visible booths",
+    levelPulses: "Level pulses",
+    removeBooth: "Remove Booth",
+    newBoothPlaceholder: "Name the new booth, e.g. Elastic Demo Booth",
+    cancel: "Cancel",
+    createBooth: "Create Booth",
+    messagePlaceholder: "Ask a question or leave a pulse here...",
+    sendPulse: "Send Pulse",
+    stageReadout: "Stage Readout",
+    freshMix: "Fresh mix of questions",
+    safetyAlertsActive: "Safety alerts active",
+    safetyLayerSteady: "Safety layer steady",
+    openAiCommentSummary: "OpenAI Comment Summary",
+    usingBrowserKey: "Using browser key",
+    usingEnvKey: "Using env key",
+    noApiKeyConnected: "No API key connected",
+    summaryNote:
+      "Demo-friendly setup: you can paste a browser key here, but OpenAI recommends keeping production keys on your backend instead of shipping them in the browser.",
+    openAiApiKey: "OpenAI API key",
+    envKeyPlaceholder: "Optional browser override for the env key",
+    browserKeyPlaceholder: "Paste a project key for comment summaries",
+    summaryModel: "Summary model",
+    autoSummarize: "Auto summarize new comments",
+    saveKey: "Save Key",
+    clearSavedKey: "Clear Saved Key",
+    summarizeNow: "Summarize Now",
+    summarizing: "Summarizing",
+    generatedSummary: "Generated summary",
+    noAiSummaryYet:
+      "No AI summary yet. Add a key, then click Summarize Now or turn on auto summarize.",
+    adminPollControls: "Admin Poll Controls",
+    adminPollNote:
+      "Stage laptop only. Audience QR users stay on the vote-only view unless they open the page with ?admin=1.",
+    pollQuestionLabel: "Poll question",
+    pollQuestionPlaceholder: "What do you want the audience to vote on?",
+    optionPlaceholder: (index) => `Option ${index + 1}`,
+    remove: "Remove",
+    addOption: "Add Option",
+    resetVotes: "Reset Votes",
+    indexedQuestions: "Indexed Questions",
+    indexedQuestionsHelper: "ready for Elastic search",
+    duplicateQuestions: "Duplicated Questions",
+    duplicateQuestionsHelper: "grouped for speaker clarity",
+    blockedWords: "Blocked Words",
+    blockedWordsHelper: "moderation log",
+    suspiciousBurst: "Suspicious Burst",
+    suspiciousBurstHelper: "browser spike alerts",
+    repeatClusters: "Repeat Clusters",
+    noDuplicateClusters: "No duplicate question clusters yet.",
+    matchingQuestions: (count) => `${count} matching questions`,
+    elasticLiveLayer: "Elastic Live Layer",
+    supabaseSync: "Supabase Sync",
+    addSupabaseEnv: "Add Supabase env vars to enable shared live state.",
+    loadingSupabase: "Loading booths, questions, and poll votes from Supabase.",
+    syncIssue: (message) => `Sync issue: ${message}`,
+    realtimeActive: "Realtime sync is active for connected phones and laptops.",
+    sharedLoaded: "Shared data loaded. Waiting for realtime confirmation.",
+    search: "Search",
+    searchDescription: "Questions, booths, zones, categories, and map pulses",
+    security: "Security",
+    securityDescription: "Banned words, burst detection, and repeated-input alerts",
+    observability: "Observability",
+    observabilityDescription:
+      "Votes, pulse submissions, level switches, and summary events",
+    noLoginId: "No-login ID",
+    liveFeed: "Live Feed",
+    matchingResults: (count) => `${count} matching result${count === 1 ? "" : "s"}`,
+    livePulsesIndexed: (count) => `${count} live pulses indexed`,
+    elasticChecking: (query) => `Elastic fuzzy search is checking "${query}"...`,
+    elasticUnavailable:
+      (query) => `Elastic search is unavailable, showing live local matches for "${query}".`,
+    elasticMatches: (query) => `Elastic + live matches for "${query}"`,
+    latestAudienceSignal: "Latest audience signal across the venue",
+    noMatchingPulses: "No matching pulses yet.",
+    builtBy: "Built by",
+    teamName: "Semiahmoo Secondary Team",
+    teamMembers: "Team members",
+    voteAlreadyOn: (label) => `Your vote is already on ${label}.`,
+    voteMovedTo: (label) => `Vote moved to ${label}.`,
+    voteSentTo: (label) => `Vote sent to ${label}.`,
+    addApiKeyFirst: "Add an OpenAI API key first.",
+    noCommentsSummary: "No audience comments yet to summarize.",
+    addApiKeySummary: "Add an OpenAI API key or VITE_OPENAI_API_KEY before summarizing.",
+    freshSummaryGenerated: "Fresh AI summary generated.",
+    openAiSummaryFailed: "OpenAI summary failed. Check the admin panel.",
+    browserKeySaved: "Browser key saved on this device.",
+    browserKeyCleared: "Browser key cleared. Env key will be used if available.",
+    keepTwoPollOptions: "Keep at least two poll options.",
+    pollReset: "Poll vote counts reset for the next demo run.",
+    pointAlreadyPlaced:
+      "This booth point is already placed. Create it or cancel it before placing another.",
+    mapPointPlaced: "Map point placed. Name the booth below.",
+    addBoothNameFirst: "Click the map and add a booth name first.",
+    boothAdded: "New booth added to the live map.",
+    onlyCustomBooths: "Only booths added in this demo can be removed.",
+    boothRemoved: "Booth removed from the live map.",
+    selectBoothFirst: "Select a booth first.",
+    writePulseFirst: "Write a pulse or question first.",
+    blockedBySafety: "Blocked by live safety filter.",
+    pulseSentTo: (category, booth) => `${category} sent to ${booth}.`,
+    summaryDeveloperInstruction:
+      "You summarize live venue comments for an event admin. Be concise, actionable, and plain text only.",
+    summaryPromptIntro:
+      "You are summarizing live audience comments for an event admin dashboard called StagePulse Map.",
+    summaryPromptInstruction: "Write concise, useful plain text for a stage moderator.",
+    summaryPromptSections: "Return exactly these sections:",
+    summaryHeading: "Summary:",
+    topThemesHeading: "Top themes:",
+    bulletPlaceholder: "- item",
+    speakerCueHeading: "Speaker cue:",
+    safetyNoteHeading: "Safety note:",
+    selectedBoothContext: (name) => `Selected booth context: ${name}.`,
+    duplicateSignals: (line) => `Duplicate signals: ${line}`,
+    recentComments: "Recent comments:",
+    noCommentsAvailable: "No comments available.",
+    noDuplicateSignal: "No duplicate clusters are currently forming.",
+    duplicateLabel: (label, count) => `${label}: ${count} related questions`,
+    duplicateClusterElastic: "Elastic search and indexing",
+    duplicateClusterNoLogin: "Anonymous no-login flow",
+    duplicateClusterDuplicates: "Repeated question grouping",
+    duplicateClusterAbuse: "Moderation and abuse control",
+    assistantPrimaryFallback: "Live audience interaction",
+    assistantFocusDefault:
+      "Audience signals are spread across the map, so the speaker can steer the next moment.",
+    assistantFocusTop: (label, count) => `${label} is bubbling up across ${count} questions.`,
+    assistantRecommendationTop: (sample) => `Suggested next answer: ${sample}`,
+    assistantRecommendationDefault:
+      "Suggested next answer: explain how anonymous browser IDs keep the experience no-login while Elastic handles search and moderation.",
+    assistantSafetyQuiet: "Safety layer is quiet right now.",
+    assistantSafetyActive:
+      (blocked, burst) =>
+        `Safety layer has blocked ${blocked} banned-word attempt${
+          blocked === 1 ? "" : "s"
+        } and flagged ${burst} burst alert${burst === 1 ? "" : "s"}.`,
+  },
+  fr: {
+    languageLabel: "Langue",
+    languagePromptTitle: "Choisissez votre langue",
+    languagePromptBody:
+      "Sélectionnez l’anglais ou le français pour cet appareil. Vous pourrez la modifier en tout temps dans le coin supérieur gauche.",
+    chooseEnglish: "English",
+    chooseFrench: "Français",
+    live: "EN DIRECT",
+    adminMode: "Mode admin",
+    audienceMode: "Mode public",
+    brandDescription:
+      "Les participants scannent un code QR, votent au sondage en direct, touchent un emplacement et laissent des questions ou des impulsions sans se connecter.",
+    anonymousBrowser: "Navigateur anonyme",
+    liveComments: "Commentaires en direct",
+    audiencePoll: "Sondage du public",
+    pollDescription:
+      "Chaque navigateur dispose d’un seul vote en direct. Les participants peuvent déplacer leur vote, mais ne peuvent pas en cumuler plusieurs dans la même session.",
+    mostPopularVote: "Vote le plus populaire",
+    audienceVotesCaptured: (count) => `${count} votes du public enregistrés`,
+    addBooth: "Ajouter un kiosque",
+    clickMapToPlaceBooth: "Cliquez sur la carte pour placer le kiosque",
+    searchPlaceholder: "Rechercher des commentaires, kiosques ou catégories...",
+    addModeInstruction:
+      "Le mode ajout est actif. Cliquez n’importe où sur la carte actuelle pour placer un kiosque.",
+    defaultMapInstruction:
+      "Sélectionnez un kiosque, rédigez une impulsion et laissez le public animer la carte du lieu.",
+    newBoothOnLevel: (levelLabel) => `Nouveau kiosque sur ${levelLabel}`,
+    selectedBooth: (name) => `Sélectionné : ${name}`,
+    selectedFallback: "Aucun kiosque sélectionné",
+    currentLevel: "Niveau actuel",
+    visibleBooths: "Kiosques visibles",
+    levelPulses: "Impulsions du niveau",
+    removeBooth: "Supprimer le kiosque",
+    newBoothPlaceholder: "Nommez le nouveau kiosque, ex. Kiosque démo Elastic",
+    cancel: "Annuler",
+    createBooth: "Créer le kiosque",
+    messagePlaceholder: "Posez une question ou laissez une impulsion ici...",
+    sendPulse: "Envoyer l’impulsion",
+    stageReadout: "Lecture de scène",
+    freshMix: "Mélange de questions varié",
+    safetyAlertsActive: "Alertes de sécurité actives",
+    safetyLayerSteady: "Couche de sécurité stable",
+    openAiCommentSummary: "Résumé OpenAI des commentaires",
+    usingBrowserKey: "Clé du navigateur utilisée",
+    usingEnvKey: "Clé d’environnement utilisée",
+    noApiKeyConnected: "Aucune clé API connectée",
+    summaryNote:
+      "Configuration pratique pour la démo : vous pouvez coller une clé de navigateur ici, mais OpenAI recommande de garder les clés de production sur votre backend plutôt que dans le navigateur.",
+    openAiApiKey: "Clé API OpenAI",
+    envKeyPlaceholder: "Remplacement facultatif de la clé d’environnement",
+    browserKeyPlaceholder: "Collez une clé de projet pour les résumés",
+    summaryModel: "Modèle de résumé",
+    autoSummarize: "Résumer automatiquement les nouveaux commentaires",
+    saveKey: "Enregistrer la clé",
+    clearSavedKey: "Effacer la clé enregistrée",
+    summarizeNow: "Résumer maintenant",
+    summarizing: "Résumé en cours",
+    generatedSummary: "Résumé généré",
+    noAiSummaryYet:
+      "Aucun résumé IA pour le moment. Ajoutez une clé, puis cliquez sur Résumer maintenant ou activez le résumé automatique.",
+    adminPollControls: "Contrôles admin du sondage",
+    adminPollNote:
+      "Réservé à l’ordinateur de scène. Les utilisateurs du code QR restent sur la vue de vote seulement, sauf s’ils ouvrent la page avec ?admin=1.",
+    pollQuestionLabel: "Question du sondage",
+    pollQuestionPlaceholder: "Que voulez-vous demander au public ?",
+    optionPlaceholder: (index) => `Option ${index + 1}`,
+    remove: "Supprimer",
+    addOption: "Ajouter une option",
+    resetVotes: "Réinitialiser les votes",
+    indexedQuestions: "Questions indexées",
+    indexedQuestionsHelper: "prêtes pour la recherche Elastic",
+    duplicateQuestions: "Questions en doublon",
+    duplicateQuestionsHelper: "regroupées pour le conférencier",
+    blockedWords: "Mots bloqués",
+    blockedWordsHelper: "journal de modération",
+    suspiciousBurst: "Rafale suspecte",
+    suspiciousBurstHelper: "alertes d’activité navigateur",
+    repeatClusters: "Groupes répétés",
+    noDuplicateClusters: "Aucun groupe de questions répétées pour l’instant.",
+    matchingQuestions: (count) => `${count} questions correspondantes`,
+    elasticLiveLayer: "Couche Elastic en direct",
+    supabaseSync: "Synchronisation Supabase",
+    addSupabaseEnv:
+      "Ajoutez les variables d’environnement Supabase pour activer l’état partagé en direct.",
+    loadingSupabase:
+      "Chargement des kiosques, des questions et des votes de sondage depuis Supabase.",
+    syncIssue: (message) => `Problème de synchronisation : ${message}`,
+    realtimeActive: "La synchronisation temps réel est active pour les téléphones et ordinateurs connectés.",
+    sharedLoaded: "Les données partagées sont chargées. En attente de la confirmation temps réel.",
+    search: "Recherche",
+    searchDescription: "Questions, kiosques, zones, catégories et impulsions sur la carte",
+    security: "Sécurité",
+    securityDescription:
+      "Mots interdits, détection de rafales et alertes d’entrées répétées",
+    observability: "Observabilité",
+    observabilityDescription:
+      "Votes, envois d’impulsions, changements de niveau et événements de résumé",
+    noLoginId: "ID sans connexion",
+    liveFeed: "Fil en direct",
+    matchingResults: (count) => `${count} résultat${count === 1 ? "" : "s"} correspondant${count === 1 ? "" : "s"}`,
+    livePulsesIndexed: (count) => `${count} impulsions en direct indexées`,
+    elasticChecking: (query) => `La recherche floue Elastic vérifie « ${query} »...`,
+    elasticUnavailable:
+      (query) =>
+        `La recherche Elastic est indisponible; affichage des correspondances locales pour « ${query} ».`,
+    elasticMatches: (query) => `Correspondances Elastic + direct pour « ${query} »`,
+    latestAudienceSignal: "Dernier signal du public dans le lieu",
+    noMatchingPulses: "Aucune impulsion correspondante pour le moment.",
+    builtBy: "Réalisé par",
+    teamName: "Semiahmoo Secondary Team",
+    teamMembers: "Membres de l’équipe",
+    voteAlreadyOn: (label) => `Votre vote est déjà sur ${label}.`,
+    voteMovedTo: (label) => `Vote déplacé vers ${label}.`,
+    voteSentTo: (label) => `Vote envoyé vers ${label}.`,
+    addApiKeyFirst: "Ajoutez d’abord une clé API OpenAI.",
+    noCommentsSummary: "Aucun commentaire du public à résumer pour le moment.",
+    addApiKeySummary:
+      "Ajoutez une clé API OpenAI ou VITE_OPENAI_API_KEY avant de lancer un résumé.",
+    freshSummaryGenerated: "Nouveau résumé IA généré.",
+    openAiSummaryFailed: "Le résumé OpenAI a échoué. Vérifiez le panneau admin.",
+    browserKeySaved: "Clé du navigateur enregistrée sur cet appareil.",
+    browserKeyCleared:
+      "Clé du navigateur effacée. La clé d’environnement sera utilisée si elle existe.",
+    keepTwoPollOptions: "Conservez au moins deux options de sondage.",
+    pollReset: "Le nombre de votes du sondage a été réinitialisé pour la prochaine démo.",
+    pointAlreadyPlaced:
+      "Ce point de kiosque est déjà placé. Créez-le ou annulez-le avant d’en placer un autre.",
+    mapPointPlaced: "Point placé sur la carte. Nommez le kiosque ci-dessous.",
+    addBoothNameFirst: "Cliquez sur la carte et ajoutez d’abord un nom de kiosque.",
+    boothAdded: "Nouveau kiosque ajouté à la carte en direct.",
+    onlyCustomBooths: "Seuls les kiosques ajoutés dans cette démo peuvent être supprimés.",
+    boothRemoved: "Kiosque retiré de la carte en direct.",
+    selectBoothFirst: "Sélectionnez d’abord un kiosque.",
+    writePulseFirst: "Rédigez d’abord une impulsion ou une question.",
+    blockedBySafety: "Bloqué par le filtre de sécurité en direct.",
+    pulseSentTo: (category, booth) => `${category} envoyé à ${booth}.`,
+    summaryDeveloperInstruction:
+      "Tu résumes des commentaires en direct pour un tableau de bord d’événement. Sois concis, utile et en texte brut seulement.",
+    summaryPromptIntro:
+      "Tu résumes des commentaires du public en direct pour un tableau de bord d’administration appelé StagePulse Map.",
+    summaryPromptInstruction:
+      "Rédige un texte court et utile pour une personne qui anime la scène.",
+    summaryPromptSections: "Retourne exactement ces sections :",
+    summaryHeading: "Résumé :",
+    topThemesHeading: "Thèmes principaux :",
+    bulletPlaceholder: "- point",
+    speakerCueHeading: "Indice pour l’animateur :",
+    safetyNoteHeading: "Note de sécurité :",
+    selectedBoothContext: (name) => `Contexte du kiosque sélectionné : ${name}.`,
+    duplicateSignals: (line) => `Signaux de doublons : ${line}`,
+    recentComments: "Commentaires récents :",
+    noCommentsAvailable: "Aucun commentaire disponible.",
+    noDuplicateSignal: "Aucun groupe de doublons ne se forme actuellement.",
+    duplicateLabel: (label, count) => `${label} : ${count} questions liées`,
+    duplicateClusterElastic: "Recherche et indexation Elastic",
+    duplicateClusterNoLogin: "Expérience anonyme sans connexion",
+    duplicateClusterDuplicates: "Regroupement des questions répétées",
+    duplicateClusterAbuse: "Modération et contrôle des abus",
+    assistantPrimaryFallback: "Interaction en direct avec le public",
+    assistantFocusDefault:
+      "Les signaux du public sont répartis sur la carte, ce qui permet d’orienter le prochain moment sur scène.",
+    assistantFocusTop: (label, count) => `${label} remonte dans ${count} questions.`,
+    assistantRecommendationTop: (sample) => `Prochaine réponse suggérée : ${sample}`,
+    assistantRecommendationDefault:
+      "Prochaine réponse suggérée : expliquez comment les identifiants de navigateur anonymes gardent l’expérience sans connexion pendant qu’Elastic gère la recherche et la modération.",
+    assistantSafetyQuiet: "La couche de sécurité est calme pour le moment.",
+    assistantSafetyActive:
+      (blocked, burst) =>
+        `La couche de sécurité a bloqué ${blocked} tentative${
+          blocked === 1 ? "" : "s"
+        } avec mots interdits et signalé ${burst} alerte${
+          burst === 1 ? "" : "s"
+        } de rafale.`,
+  },
+};
 
 const ENV_OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY ?? "";
 const ENV_OPENAI_MODEL = import.meta.env.VITE_OPENAI_SUMMARY_MODEL ?? "gpt-5.4-mini";
@@ -184,6 +569,96 @@ const INITIAL_POLL = {
   ],
 };
 
+const DEFAULT_POLL_COPY = {
+  en: {
+    question: "Which area should the speaker highlight next?",
+    options: {
+      "poll-main-stage": "Main Stage",
+      "poll-sponsors": "Sponsor Booths",
+      "poll-hackers": "Hacker Room",
+      "poll-food": "Food Area",
+    },
+  },
+  fr: {
+    question: "Quelle zone le conférencier devrait-il présenter ensuite ?",
+    options: {
+      "poll-main-stage": "Scène principale",
+      "poll-sponsors": "Kiosques partenaires",
+      "poll-hackers": "Salle des hackers",
+      "poll-food": "Aire repas",
+    },
+  },
+};
+
+const SEEDED_BOOTH_COPY = {
+  en: {
+    "main-stage": {
+      name: "Peter Brown Family Centre Stage",
+      shortName: "Main Stage",
+    },
+    "connection-zone": {
+      name: "Connection Zone",
+      shortName: "Sponsor Booths",
+    },
+    "bits-bytes": {
+      name: "Bits and Bytes Lab",
+      shortName: "Hacker Room",
+    },
+    "feature-exhibition": {
+      name: "Feature Exhibition",
+      shortName: "Feature Exhibition",
+    },
+    "snack-lab": {
+      name: "Snack Lab",
+      shortName: "Food Area",
+    },
+  },
+  fr: {
+    "main-stage": {
+      name: "Scène du Peter Brown Family Centre",
+      shortName: "Scène principale",
+    },
+    "connection-zone": {
+      name: "Zone Connexion",
+      shortName: "Kiosques partenaires",
+    },
+    "bits-bytes": {
+      name: "Labo Bits and Bytes",
+      shortName: "Salle des hackers",
+    },
+    "feature-exhibition": {
+      name: "Exposition vedette",
+      shortName: "Exposition vedette",
+    },
+    "snack-lab": {
+      name: "Labo Collations",
+      shortName: "Aire repas",
+    },
+  },
+};
+
+const SEEDED_PULSE_COPY = {
+  en: {
+    "p-main-1": "Can you show how repeated questions are grouped on stage?",
+    "p-main-2": "Main stage energy is perfect for the live demo.",
+    "p-conn-1": "How does this work without login?",
+    "p-bits-1": "Can people ask anonymously without logging in?",
+    "p-bits-2": "Need another power strip in the hacker room.",
+    "p-feature-1": "Will repeated questions be merged before the speaker answers?",
+    "p-snack-1": "Food area line is growing near Snack Lab.",
+  },
+  fr: {
+    "p-main-1": "Pouvez-vous montrer comment les questions répétées sont regroupées sur scène ?",
+    "p-main-2": "L’énergie de la scène principale est parfaite pour la démo en direct.",
+    "p-conn-1": "Comment cela fonctionne-t-il sans connexion ?",
+    "p-bits-1": "Peut-on poser des questions anonymement sans se connecter ?",
+    "p-bits-2": "Il faudrait une autre barre d’alimentation dans la salle des hackers.",
+    "p-feature-1":
+      "Les questions répétées seront-elles regroupées avant la réponse du conférencier ?",
+    "p-snack-1": "La file pour les collations s’allonge près du Labo Collations.",
+  },
+};
+
 const INITIAL_SECURITY_EVENTS = [
   {
     id: "sec-1",
@@ -235,6 +710,13 @@ const INITIAL_POLL_SELECTION = {
 
 const POLL_CONFIG_STORAGE_KEY = "stagepulse-poll-config-v1";
 const STAGEPULSE_META_PREFIX = "__stagepulse__";
+
+function getStoredLanguage() {
+  if (typeof window === "undefined") return null;
+
+  const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  return storedLanguage === "fr" ? "fr" : storedLanguage === "en" ? "en" : null;
+}
 
 function readStoredJson(key, fallback) {
   if (typeof window === "undefined") return fallback;
@@ -288,6 +770,63 @@ function getStoredPollConfig() {
 
 function fallbackShortName(name) {
   return name.length > 18 ? `${name.slice(0, 18)}...` : name;
+}
+
+function getLevelLabel(level, language) {
+  return LEVELS[level]?.labels?.[language] ?? LEVELS[level]?.labels?.en ?? level;
+}
+
+function getLevelCaption(level, language) {
+  return LEVELS[level]?.captions?.[language] ?? LEVELS[level]?.captions?.en ?? "";
+}
+
+function getCategoryLabel(category, language) {
+  return CATEGORY_LABELS[language]?.[category] ?? CATEGORY_LABELS.en[category] ?? category;
+}
+
+function localizeDefaultPoll(poll, language) {
+  const targetCopy = DEFAULT_POLL_COPY[language];
+  const defaultQuestions = new Set(
+    Object.values(DEFAULT_POLL_COPY).map((pollCopy) => pollCopy.question)
+  );
+  const defaultOptionLabels = Object.fromEntries(
+    Object.keys(targetCopy.options).map((optionId) => [
+      optionId,
+      new Set(Object.values(DEFAULT_POLL_COPY).map((pollCopy) => pollCopy.options[optionId])),
+    ])
+  );
+
+  return {
+    ...poll,
+    question: defaultQuestions.has(poll.question) ? targetCopy.question : poll.question,
+    options: poll.options.map((option) => {
+      const labels = defaultOptionLabels[option.id];
+      if (!labels || !labels.has(option.label)) {
+        return option;
+      }
+
+      return {
+        ...option,
+        label: targetCopy.options[option.id] ?? option.label,
+      };
+    }),
+  };
+}
+
+function localizeBooths(booths, language) {
+  return booths.map((booth) => {
+    const localizedBooth = SEEDED_BOOTH_COPY[language]?.[booth.id];
+
+    return {
+      ...booth,
+      name: localizedBooth?.name ?? booth.name,
+      shortName: localizedBooth?.shortName ?? booth.shortName,
+      pulses: booth.pulses.map((pulse) => ({
+        ...pulse,
+        text: SEEDED_PULSE_COPY[language]?.[pulse.id] ?? pulse.text,
+      })),
+    };
+  });
 }
 
 function encodeStagePulseMeta(kind, payload) {
@@ -524,18 +1063,35 @@ function getBrowserId() {
 }
 
 function normalizeText(text) {
-  return text.toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
+  return String(text)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function similarQuestionKey(text) {
   const normalized = normalizeText(text);
 
   if (normalized.includes("elastic")) return "elastic-search";
-  if (normalized.includes("login") || normalized.includes("anonymous")) return "no-login";
+  if (
+    normalized.includes("login") ||
+    normalized.includes("anonymous") ||
+    normalized.includes("connexion") ||
+    normalized.includes("connecter") ||
+    normalized.includes("anonyme")
+  ) {
+    return "no-login";
+  }
   if (
     normalized.includes("duplicate") ||
     normalized.includes("repeat") ||
-    normalized.includes("group")
+    normalized.includes("group") ||
+    normalized.includes("doublon") ||
+    normalized.includes("repete") ||
+    normalized.includes("regroup")
   ) {
     return "duplicate-detection";
   }
@@ -543,7 +1099,9 @@ function similarQuestionKey(text) {
     normalized.includes("spam") ||
     normalized.includes("bot") ||
     normalized.includes("abuse") ||
-    normalized.includes("moderation")
+    normalized.includes("moderation") ||
+    normalized.includes("abus") ||
+    normalized.includes("pourriel")
   ) {
     return "abuse-protection";
   }
@@ -551,11 +1109,13 @@ function similarQuestionKey(text) {
   return normalized.slice(0, 52);
 }
 
-function labelQuestionCluster(key, sampleText) {
-  if (key === "elastic-search") return "Elastic search and indexing";
-  if (key === "no-login") return "Anonymous no-login flow";
-  if (key === "duplicate-detection") return "Repeated question grouping";
-  if (key === "abuse-protection") return "Moderation and abuse control";
+function labelQuestionCluster(key, sampleText, language) {
+  const copy = UI_COPY[language];
+
+  if (key === "elastic-search") return copy.duplicateClusterElastic;
+  if (key === "no-login") return copy.duplicateClusterNoLogin;
+  if (key === "duplicate-detection") return copy.duplicateClusterDuplicates;
+  if (key === "abuse-protection") return copy.duplicateClusterAbuse;
   return sampleText;
 }
 
@@ -564,15 +1124,22 @@ function hasBannedWord(text) {
   return BANNED_WORDS.some((word) => normalized.includes(word));
 }
 
-function formatClock(isoString) {
-  return new Date(isoString).toLocaleTimeString([], {
+function formatClock(isoString, language) {
+  return new Date(isoString).toLocaleTimeString(LOCALE_BY_LANGUAGE[language] ?? "en-CA", {
     hour: "numeric",
     minute: "2-digit",
   });
 }
 
-function formatRelativeTime(isoString) {
+function formatRelativeTime(isoString, language) {
   const seconds = Math.max(1, Math.floor((Date.now() - new Date(isoString).getTime()) / 1000));
+
+  if (language === "fr") {
+    if (seconds < 60) return `il y a ${seconds} s`;
+    if (seconds < 3600) return `il y a ${Math.floor(seconds / 60)} min`;
+    return `il y a ${Math.floor(seconds / 3600)} h`;
+  }
+
   if (seconds < 60) return `${seconds}s ago`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   return `${Math.floor(seconds / 3600)}h ago`;
@@ -582,39 +1149,40 @@ function displayPollLabel(label, index) {
   return label.trim() || `Option ${index + 1}`;
 }
 
-function buildSummaryPrompt(pulses, duplicateGroups, selectedBooth) {
+function buildSummaryPrompt(language, pulses, duplicateGroups, selectedBooth) {
+  const copy = UI_COPY[language];
   const pulseLines = pulses
     .slice(0, 18)
     .map(
       (pulse, index) =>
-        `${index + 1}. [${pulse.type}] ${pulse.boothShortName} / ${
-          LEVELS[pulse.level]?.label ?? pulse.level
-        } / ${formatRelativeTime(pulse.createdAt)} - ${pulse.text}`
+        `${index + 1}. [${getCategoryLabel(pulse.type, language)}] ${pulse.boothShortName} / ${
+          getLevelLabel(pulse.level, language)
+        } / ${formatRelativeTime(pulse.createdAt, language)} - ${pulse.text}`
     )
     .join("\n");
 
   const duplicateLine = duplicateGroups.length
     ? duplicateGroups
         .slice(0, 4)
-        .map((group) => `${group.label}: ${group.count} related questions`)
+        .map((group) => copy.duplicateLabel(group.label, group.count))
         .join("; ")
-    : "No duplicate clusters are currently forming.";
+    : copy.noDuplicateSignal;
 
   return [
-    "You are summarizing live audience comments for an event admin dashboard called StagePulse Map.",
-    "Write concise, useful plain text for a stage moderator.",
-    "Return exactly these sections:",
-    "Summary:",
-    "Top themes:",
-    "- item",
-    "- item",
-    "Speaker cue:",
-    "Safety note:",
+    copy.summaryPromptIntro,
+    copy.summaryPromptInstruction,
+    copy.summaryPromptSections,
+    copy.summaryHeading,
+    copy.topThemesHeading,
+    copy.bulletPlaceholder,
+    copy.bulletPlaceholder,
+    copy.speakerCueHeading,
+    copy.safetyNoteHeading,
     "",
-    `Selected booth context: ${selectedBooth?.name ?? "No booth selected"}.`,
-    `Duplicate signals: ${duplicateLine}`,
-    "Recent comments:",
-    pulseLines || "No comments available.",
+    copy.selectedBoothContext(selectedBooth?.name ?? copy.selectedFallback),
+    copy.duplicateSignals(duplicateLine),
+    copy.recentComments,
+    pulseLines || copy.noCommentsAvailable,
   ].join("\n");
 }
 
@@ -717,12 +1285,15 @@ function App() {
   const toastTimerRef = useRef(null);
   const summaryTimerRef = useRef(null);
 
+  const [language, setLanguage] = useState(() => getStoredLanguage() ?? "en");
+  const [showLanguagePrompt, setShowLanguagePrompt] = useState(() => !getStoredLanguage());
   const [browserId] = useState(() => getBrowserId());
   const [adminMode] = useState(
     () =>
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search).get("admin") === "1"
   );
+  const copy = UI_COPY[language];
 
   const [activeLevel, setActiveLevel] = useState("level1");
   const [localBooths, setLocalBooths] = useState(() =>
@@ -771,6 +1342,11 @@ function App() {
   const [apiKeyDraft, setApiKeyDraft] = useState(
     readStoredJson("stagepulse-openai-v1", INITIAL_OPENAI_SETTINGS).browserKey ?? ""
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  }, [language]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -951,11 +1527,15 @@ function App() {
         : localBooths,
     [localBooths, supabaseBooths, supabaseQuestions]
   );
+  const displayBooths = useMemo(() => localizeBooths(booths, language), [booths, language]);
 
   const poll = useMemo(
     () =>
-      isSupabaseConfigured ? buildSupabasePoll(pollConfig, supabasePollVotes) : localPoll,
-    [localPoll, pollConfig, supabasePollVotes]
+      localizeDefaultPoll(
+        isSupabaseConfigured ? buildSupabasePoll(pollConfig, supabasePollVotes) : localPoll,
+        language
+      ),
+    [language, localPoll, pollConfig, supabasePollVotes]
   );
 
   const selectedPollOptionId = isSupabaseConfigured
@@ -963,27 +1543,29 @@ function App() {
     : pollSelection.optionId;
 
   useEffect(() => {
-    if (!booths.length) return;
+    if (!displayBooths.length) return;
 
-    const selectionStillExists = booths.some((booth) => booth.id === selectedBoothId);
+    const selectionStillExists = displayBooths.some((booth) => booth.id === selectedBoothId);
     if (selectionStillExists) return;
 
-    const fallbackBooth = booths.find((booth) => booth.level === activeLevel) ?? booths[0];
+    const fallbackBooth =
+      displayBooths.find((booth) => booth.level === activeLevel) ?? displayBooths[0];
     if (fallbackBooth) {
       setSelectedBoothId(fallbackBooth.id);
       if (fallbackBooth.level !== activeLevel) {
         setActiveLevel(fallbackBooth.level);
       }
     }
-  }, [activeLevel, booths, selectedBoothId]);
+  }, [activeLevel, displayBooths, selectedBoothId]);
 
-  const selectedBooth = booths.find((booth) => booth.id === selectedBoothId) ?? booths[0] ?? null;
-  const visibleBooths = booths.filter((booth) => booth.level === activeLevel);
+  const selectedBooth =
+    displayBooths.find((booth) => booth.id === selectedBoothId) ?? displayBooths[0] ?? null;
+  const visibleBooths = displayBooths.filter((booth) => booth.level === activeLevel);
   const activeLevelMeta = LEVELS[activeLevel];
 
   const allPulses = useMemo(
     () =>
-      booths
+      displayBooths
         .flatMap((booth) =>
           booth.pulses.map((pulse) => ({
             ...pulse,
@@ -996,7 +1578,7 @@ function App() {
           }))
         )
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [booths]
+    [displayBooths]
   );
 
   const duplicateGroups = useMemo(() => {
@@ -1014,7 +1596,7 @@ function App() {
         key,
         count: items.length,
         sampleText: items[0]?.text ?? "",
-        label: labelQuestionCluster(key, items[0]?.text ?? "Audience question"),
+        label: labelQuestionCluster(key, items[0]?.text ?? "Audience question", language),
         latestAt: items[0]?.createdAt ?? minutesAgo(0),
       }))
       .filter((group) => group.count > 1)
@@ -1022,7 +1604,7 @@ function App() {
         if (b.count !== a.count) return b.count - a.count;
         return new Date(b.latestAt) - new Date(a.latestAt);
       });
-  }, [allPulses]);
+  }, [allPulses, language]);
 
   const topDuplicateGroup = duplicateGroups[0] ?? null;
   const duplicateQuestionCount = duplicateGroups.reduce(
@@ -1050,7 +1632,7 @@ function App() {
       ? "env"
       : "";
 
-  const levelPulseCount = booths
+  const levelPulseCount = displayBooths
     .filter((booth) => booth.level === activeLevel)
     .reduce((sum, booth) => sum + booth.pulses.length, 0);
 
@@ -1097,7 +1679,10 @@ function App() {
         } catch (error) {
           if (!isActive) return;
 
-          const messageText = getErrorMessage(error, "Elastic search is unavailable.");
+          const messageText = getErrorMessage(
+            error,
+            language === "fr" ? "La recherche Elastic est indisponible." : "Elastic search is unavailable."
+          );
           setElasticSearchError(messageText);
           setElasticResults([]);
         } finally {
@@ -1112,7 +1697,7 @@ function App() {
       isActive = false;
       window.clearTimeout(timerId);
     };
-  }, [searchTerm]);
+  }, [language, searchTerm]);
 
   const displayedFeed = useMemo(() => {
     if (!searchTerm.trim() || elasticSearchError) {
@@ -1139,32 +1724,47 @@ function App() {
   const localAssistantSummary = useMemo(() => {
     const keywordSignals = [
       {
-        label: "Elastic search and moderation",
+        label: language === "fr" ? "Recherche et modération Elastic" : "Elastic search and moderation",
         count: allPulses.filter((pulse) => normalizeText(pulse.text).includes("elastic")).length,
       },
       {
-        label: "Anonymous no-login access",
+        label:
+          language === "fr" ? "Accès anonyme sans connexion" : "Anonymous no-login access",
         count: allPulses.filter((pulse) => {
           const normalized = normalizeText(pulse.text);
-          return normalized.includes("login") || normalized.includes("anonymous");
+          return (
+            normalized.includes("login") ||
+            normalized.includes("anonymous") ||
+            normalized.includes("connexion") ||
+            normalized.includes("anonyme")
+          );
         }).length,
       },
       {
-        label: "Duplicate grouping for the speaker",
+        label:
+          language === "fr"
+            ? "Regroupement des questions pour le conférencier"
+            : "Duplicate grouping for the speaker",
         count: allPulses.filter((pulse) => {
           const normalized = normalizeText(pulse.text);
-          return normalized.includes("duplicate") || normalized.includes("repeat");
+          return (
+            normalized.includes("duplicate") ||
+            normalized.includes("repeat") ||
+            normalized.includes("doublon") ||
+            normalized.includes("repete")
+          );
         }).length,
       },
       {
-        label: "Spam and bot protection",
+        label: language === "fr" ? "Protection contre le spam et les bots" : "Spam and bot protection",
         count: allPulses.filter((pulse) => {
           const normalized = normalizeText(pulse.text);
           return (
             normalized.includes("spam") ||
             normalized.includes("bot") ||
             normalized.includes("abuse") ||
-            normalized.includes("moderation")
+            normalized.includes("moderation") ||
+            normalized.includes("abus")
           );
         }).length,
       },
@@ -1172,23 +1772,19 @@ function App() {
       .filter((signal) => signal.count > 0)
       .sort((a, b) => b.count - a.count);
 
-    const primarySignal = keywordSignals[0]?.label ?? "Live audience interaction";
+    const primarySignal = keywordSignals[0]?.label ?? copy.assistantPrimaryFallback;
     const focusLine = topDuplicateGroup
-      ? `${topDuplicateGroup.label} is bubbling up across ${topDuplicateGroup.count} questions.`
-      : "Audience signals are spread across the map, so the speaker can steer the next moment.";
+      ? copy.assistantFocusTop(topDuplicateGroup.label, topDuplicateGroup.count)
+      : copy.assistantFocusDefault;
 
     const recommendation = topDuplicateGroup
-      ? `Suggested next answer: ${topDuplicateGroup.sampleText}`
-      : "Suggested next answer: explain how anonymous browser IDs keep the experience no-login while Elastic handles search and moderation.";
+      ? copy.assistantRecommendationTop(topDuplicateGroup.sampleText)
+      : copy.assistantRecommendationDefault;
 
     const safetyLine =
       blockedWordCount || suspiciousBurstCount
-        ? `Safety layer has blocked ${blockedWordCount} banned-word attempt${
-            blockedWordCount === 1 ? "" : "s"
-          } and flagged ${suspiciousBurstCount} burst alert${
-            suspiciousBurstCount === 1 ? "" : "s"
-          }.`
-        : "Safety layer is quiet right now.";
+        ? copy.assistantSafetyActive(blockedWordCount, suspiciousBurstCount)
+        : copy.assistantSafetyQuiet;
 
     return {
       primarySignal,
@@ -1196,7 +1792,7 @@ function App() {
       recommendation,
       safetyLine,
     };
-  }, [allPulses, blockedWordCount, suspiciousBurstCount, topDuplicateGroup]);
+  }, [allPulses, blockedWordCount, copy, language, suspiciousBurstCount, topDuplicateGroup]);
 
   const summaryFingerprint = useMemo(
     () =>
@@ -1219,6 +1815,11 @@ function App() {
   function registerSecurityEvent(event) {
     setSecurityEvents((prev) => [event, ...prev].slice(0, 32));
     logSecurityEventToElastic(event);
+  }
+
+  function setPreferredLanguage(nextLanguage) {
+    setLanguage(nextLanguage);
+    setShowLanguagePrompt(false);
   }
 
   async function insertBoothIntoSupabase(booth) {
@@ -1326,17 +1927,17 @@ function App() {
 
   async function summarizeComments({ automatic = false } = {}) {
     if (!allPulses.length) {
-      setSummaryError("No audience comments yet to summarize.");
+      setSummaryError(copy.noCommentsSummary);
       if (!automatic) {
-        showToast("No audience comments yet to summarize.", "warning");
+        showToast(copy.noCommentsSummary, "warning");
       }
       return;
     }
 
     if (!activeApiKey) {
-      setSummaryError("Add an OpenAI API key or VITE_OPENAI_API_KEY before summarizing.");
+      setSummaryError(copy.addApiKeySummary);
       if (!automatic) {
-        showToast("Add an OpenAI API key first.", "warning");
+        showToast(copy.addApiKeyFirst, "warning");
       }
       return;
     }
@@ -1357,12 +1958,11 @@ function App() {
           input: [
             {
               role: "developer",
-              content:
-                "You summarize live venue comments for an event admin. Be concise, actionable, and plain text only.",
+              content: copy.summaryDeveloperInstruction,
             },
             {
               role: "user",
-              content: buildSummaryPrompt(allPulses, duplicateGroups, selectedBooth),
+              content: buildSummaryPrompt(language, allPulses, duplicateGroups, selectedBooth),
             },
           ],
         }),
@@ -1397,13 +1997,13 @@ function App() {
       });
 
       if (!automatic) {
-        showToast("Fresh AI summary generated.", "success");
+        showToast(copy.freshSummaryGenerated, "success");
       }
     } catch (error) {
       const messageText = getErrorMessage(error, "Unable to summarize comments right now.");
       setSummaryError(messageText);
       if (!automatic) {
-        showToast("OpenAI summary failed. Check the admin panel.", "error");
+        showToast(copy.openAiSummaryFailed, "error");
       }
     } finally {
       setSummaryLoading(false);
@@ -1447,9 +2047,9 @@ function App() {
     }));
 
     if (apiKeyDraft.trim()) {
-      showToast("Browser key saved on this device.", "success");
+      showToast(copy.browserKeySaved, "success");
     } else {
-      showToast("Browser key cleared. Env key will be used if available.", "success");
+      showToast(copy.browserKeyCleared, "success");
     }
   }
 
@@ -1458,7 +2058,7 @@ function App() {
     const previousOptionId = selectedPollOptionId;
 
     if (previousOptionId === optionId) {
-      showToast(`Your vote is already on ${votedOption?.label ?? "this option"}.`, "success");
+      showToast(copy.voteAlreadyOn(votedOption?.label ?? copy.optionPlaceholder(0)), "success");
       return;
     }
 
@@ -1501,8 +2101,8 @@ function App() {
     });
     showToast(
       previousOptionId
-        ? `Vote moved to ${votedOption?.label ?? "this option"}.`
-        : `Vote sent to ${votedOption?.label ?? "this option"}.`,
+        ? copy.voteMovedTo(votedOption?.label ?? copy.optionPlaceholder(0))
+        : copy.voteSentTo(votedOption?.label ?? copy.optionPlaceholder(0)),
       "success"
     );
   }
@@ -1534,7 +2134,7 @@ function App() {
   function addPollOption() {
     const nextOption = {
       id: createId("poll"),
-      label: `New Option ${pollConfig.options.length + 1}`,
+      label: language === "fr" ? `Nouvelle option ${pollConfig.options.length + 1}` : `New Option ${pollConfig.options.length + 1}`,
     };
 
     setPollConfig((prev) => ({
@@ -1552,7 +2152,7 @@ function App() {
 
   function removePollOption(optionId) {
     if (poll.options.length <= 2) {
-      showToast("Keep at least two poll options.", "warning");
+      showToast(copy.keepTwoPollOptions, "warning");
       return;
     }
 
@@ -1587,7 +2187,7 @@ function App() {
       setPollSelection(INITIAL_POLL_SELECTION);
     }
 
-    showToast("Poll vote counts reset for the next demo run.", "success");
+    showToast(copy.pollReset, "success");
   }
 
   function handleLevelChange(level) {
@@ -1595,7 +2195,7 @@ function App() {
     setAddBoothMode(false);
     setDraftBooth(null);
 
-    const fallbackBooth = booths.find((booth) => booth.level === level);
+    const fallbackBooth = displayBooths.find((booth) => booth.level === level);
     if (fallbackBooth) {
       setSelectedBoothId(fallbackBooth.id);
     }
@@ -1615,7 +2215,7 @@ function App() {
   function handleMapClick(event) {
     if (!addBoothMode) return;
     if (draftBooth) {
-      showToast("This booth point is already placed. Create it or cancel it before placing another.", "warning");
+      showToast(copy.pointAlreadyPlaced, "warning");
       return;
     }
 
@@ -1630,12 +2230,12 @@ function App() {
       color: COLOR_ROTATION[booths.length % COLOR_ROTATION.length],
     });
     setBoothName("");
-    showToast("Map point placed. Name the booth below.", "success");
+    showToast(copy.mapPointPlaced, "success");
   }
 
   async function createBooth() {
     if (!draftBooth || !boothName.trim()) {
-      showToast("Click the map and add a booth name first.", "warning");
+      showToast(copy.addBoothNameFirst, "warning");
       return;
     }
 
@@ -1662,7 +2262,10 @@ function App() {
           id: createUuid(),
           boothId: insertedBooth.id,
           type: "Fun",
-          text: "New booth is live on the map. Drop the first pulse here.",
+          text:
+            language === "fr"
+              ? "Le nouveau kiosque est actif sur la carte. Déposez ici la première impulsion."
+              : "New booth is live on the map. Drop the first pulse here.",
           createdAt,
           browserId: "stagepulse-system",
         });
@@ -1678,7 +2281,10 @@ function App() {
             {
               id: createId("pulse"),
               type: "Fun",
-              text: "New booth is live on the map. Drop the first pulse here.",
+              text:
+                language === "fr"
+                  ? "Le nouveau kiosque est actif sur la carte. Déposez ici la première impulsion."
+                  : "New booth is live on the map. Drop the first pulse here.",
               createdAt,
               browserId: "stagepulse-system",
             },
@@ -1701,7 +2307,7 @@ function App() {
         browserId,
         createdAt,
       });
-      showToast("New booth added to the live map.", "success");
+      showToast(copy.boothAdded, "success");
     } catch (error) {
       const messageText = getErrorMessage(error, "Unable to create the booth right now.");
       showToast(messageText, "error");
@@ -1710,7 +2316,7 @@ function App() {
 
   async function removeSelectedBooth() {
     if (!selectedBooth?.custom) {
-      showToast("Only booths added in this demo can be removed.", "warning");
+      showToast(copy.onlyCustomBooths, "warning");
       return;
     }
 
@@ -1718,8 +2324,8 @@ function App() {
     const removedLevel = selectedBooth.level;
 
     const nextSelection =
-      booths.find((booth) => booth.id !== removedBoothId && booth.level === removedLevel) ??
-      booths.find((booth) => booth.id !== removedBoothId) ??
+      displayBooths.find((booth) => booth.id !== removedBoothId && booth.level === removedLevel) ??
+      displayBooths.find((booth) => booth.id !== removedBoothId) ??
       null;
 
     try {
@@ -1747,7 +2353,7 @@ function App() {
         browserId,
         createdAt: new Date().toISOString(),
       });
-      showToast("Booth removed from the live map.", "success");
+      showToast(copy.boothRemoved, "success");
     } catch (error) {
       const messageText = getErrorMessage(error, "Unable to remove this booth right now.");
       showToast(messageText, "error");
@@ -1763,11 +2369,11 @@ function App() {
   async function submitPulse() {
     const cleanMessage = message.trim();
     if (!selectedBooth) {
-      showToast("Select a booth first.", "warning");
+      showToast(copy.selectBoothFirst, "warning");
       return;
     }
     if (!cleanMessage) {
-      showToast("Write a pulse or question first.", "warning");
+      showToast(copy.writePulseFirst, "warning");
       return;
     }
 
@@ -1792,7 +2398,7 @@ function App() {
         browserId,
         createdAt,
       });
-      showToast("Blocked by live safety filter.", "warning");
+      showToast(copy.blockedBySafety, "warning");
       return;
     }
 
@@ -1915,37 +2521,49 @@ function App() {
       browserId,
       createdAt,
     });
-    showToast(`${category} sent to ${selectedBooth.shortName}.`, "success");
+    showToast(copy.pulseSentTo(getCategoryLabel(category, language), selectedBooth.shortName), "success");
   }
 
   return (
     <div className="app-shell">
+      <div className="language-corner" aria-label={copy.languageLabel}>
+        <button
+          className={language === "en" ? "active" : ""}
+          onClick={() => setPreferredLanguage("en")}
+        >
+          EN
+        </button>
+        <button
+          className={language === "fr" ? "active" : ""}
+          onClick={() => setPreferredLanguage("fr")}
+        >
+          FR
+        </button>
+      </div>
+
       <header className="topbar">
         <section className="brand-panel">
           <div className="brand-meta">
             <div className="live-pill">
               <span className="live-dot" />
-              LIVE
+              {copy.live}
             </div>
             <div className="meta-chip">Cloud Summit x Science World</div>
-            <div className="meta-chip">{adminMode ? "Admin mode" : "Audience mode"}</div>
+            <div className="meta-chip">{adminMode ? copy.adminMode : copy.audienceMode}</div>
           </div>
 
           <div className="brand-copy">
             <h1>StagePulse Map</h1>
-            <p>
-              Audience members scan a QR code, vote in the live poll, tap a location,
-              and leave questions or pulses without logging in.
-            </p>
+            <p>{copy.brandDescription}</p>
           </div>
 
           <div className="brand-footer">
             <div>
-              <span>Anonymous browser</span>
+              <span>{copy.anonymousBrowser}</span>
               <strong>{browserId.slice(-10)}</strong>
             </div>
             <div className="mini-stat">
-              <span>Live comments</span>
+              <span>{copy.liveComments}</span>
               <strong>{totalPulses}</strong>
             </div>
           </div>
@@ -1954,13 +2572,10 @@ function App() {
         <section className="poll-panel">
           <div className="panel-heading">
             <Vote size={16} />
-            <span>Audience Poll</span>
+            <span>{copy.audiencePoll}</span>
           </div>
           <h2 className="poll-question">{poll.question}</h2>
-          <p className="panel-copy">
-            Each browser gets one live vote. Audience members can move their vote, but not stack
-            multiple votes from the same session.
-          </p>
+          <p className="panel-copy">{copy.pollDescription}</p>
           <div className="poll-options">
             {poll.options.map((option, index) => {
               const percent = totalVotes ? Math.round((option.votes / totalVotes) * 100) : 0;
@@ -1982,12 +2597,13 @@ function App() {
         </section>
 
         <section className="popular-card">
-          <span>Most Popular Vote</span>
+          <span>{copy.mostPopularVote}</span>
           <strong>{mostPopularVote.label}</strong>
           <small>
-            {mostPopularVote.votes} live votes - {mostPopularShare}% share
+            {mostPopularVote.votes} {language === "fr" ? "votes en direct" : "live votes"} -{" "}
+            {mostPopularShare}% {language === "fr" ? "de part" : "share"}
           </small>
-          <div className="turnout-pill">{totalVotes} audience votes captured</div>
+          <div className="turnout-pill">{copy.audienceVotesCaptured(totalVotes)}</div>
         </section>
       </header>
 
@@ -2001,7 +2617,7 @@ function App() {
                   className={activeLevel === level ? "active" : ""}
                   onClick={() => handleLevelChange(level)}
                 >
-                  {value.label}
+                  {value.labels[language]}
                 </button>
               ))}
             </div>
@@ -2018,7 +2634,7 @@ function App() {
               }}
             >
               <CirclePlus size={16} />
-              {addBoothMode ? "Click map to place booth" : "Add Booth"}
+              {addBoothMode ? copy.clickMapToPlaceBooth : copy.addBooth}
             </button>
 
             <label className="search-box">
@@ -2026,23 +2642,23 @@ function App() {
               <input
                 value={searchTerm}
                 onChange={handleSearchChange}
-                placeholder="Search comments, booths, categories..."
+                placeholder={copy.searchPlaceholder}
               />
             </label>
           </div>
 
           <div className={`map-stage ${activeLevel}`} onClick={handleMapClick}>
-            <img src={activeLevelMeta.image} alt={`${activeLevelMeta.label} map`} />
+            <img src={activeLevelMeta.image} alt={`${getLevelLabel(activeLevel, language)} map`} />
 
             <div className="map-stage-label">
-              <strong>{activeLevelMeta.label}</strong>
-              <span>{activeLevelMeta.caption}</span>
+              <strong>{getLevelLabel(activeLevel, language)}</strong>
+              <span>{getLevelCaption(activeLevel, language)}</span>
             </div>
 
             <div className="map-instruction">
               {addBoothMode
-                ? "Add mode is live. Click anywhere on the current map to place a booth."
-                : "Select a booth, write a pulse, and let the audience light up the venue map."}
+                ? copy.addModeInstruction
+                : copy.defaultMapInstruction}
             </div>
 
             {visibleBooths.map((booth) => (
@@ -2083,14 +2699,19 @@ function App() {
                 <strong>{selectedBooth.shortName}</strong>
                 <p>
                   {selectedBooth.pulses[0]?.text ??
-                    "No pulses yet. Be the first audience voice in this zone."}
+                    (language === "fr"
+                      ? "Aucune impulsion pour l’instant. Soyez la première voix du public dans cette zone."
+                      : "No pulses yet. Be the first audience voice in this zone.")}
                 </p>
                 <small>
                   {selectedBooth.pulses[0]
-                    ? `${selectedBooth.pulses[0].type} - ${formatClock(
-                        selectedBooth.pulses[0].createdAt
+                    ? `${getCategoryLabel(selectedBooth.pulses[0].type, language)} - ${formatClock(
+                        selectedBooth.pulses[0].createdAt,
+                        language
                       )}`
-                    : "Waiting for the first pulse"}
+                    : language === "fr"
+                      ? "En attente de la première impulsion"
+                      : "Waiting for the first pulse"}
                 </small>
               </div>
             )}
@@ -2101,21 +2722,21 @@ function App() {
               <div className="selected-zone">
                 <CheckCircle2 size={16} />
                 {draftBooth
-                  ? `New booth on ${LEVELS[draftBooth.level].label}`
-                  : `Selected: ${selectedBooth?.name ?? "No booth selected"}`}
+                  ? copy.newBoothOnLevel(getLevelLabel(draftBooth.level, language))
+                  : copy.selectedBooth(selectedBooth?.name ?? copy.selectedFallback)}
               </div>
 
               <div className="context-strip">
                 <div>
-                  <span>Current level</span>
-                  <strong>{LEVELS[activeLevel].label}</strong>
+                  <span>{copy.currentLevel}</span>
+                  <strong>{getLevelLabel(activeLevel, language)}</strong>
                 </div>
                 <div>
-                  <span>Visible booths</span>
+                  <span>{copy.visibleBooths}</span>
                   <strong>{visibleBooths.length}</strong>
                 </div>
                 <div>
-                  <span>Level pulses</span>
+                  <span>{copy.levelPulses}</span>
                   <strong>{levelPulseCount}</strong>
                 </div>
               </div>
@@ -2123,7 +2744,7 @@ function App() {
               {adminMode && selectedBooth?.custom && !draftBooth && (
                 <div className="new-booth-actions">
                   <button className="secondary" onClick={removeSelectedBooth}>
-                    Remove Booth
+                    {copy.removeBooth}
                   </button>
                 </div>
               )}
@@ -2133,13 +2754,13 @@ function App() {
                   <input
                     value={boothName}
                     onChange={(event) => setBoothName(event.target.value)}
-                    placeholder="Name the new booth, e.g. Elastic Demo Booth"
+                    placeholder={copy.newBoothPlaceholder}
                   />
                   <div className="new-booth-actions">
                     <button className="secondary" onClick={cancelBoothCreation}>
-                      Cancel
+                      {copy.cancel}
                     </button>
-                    <button onClick={createBooth}>Create Booth</button>
+                    <button onClick={createBooth}>{copy.createBooth}</button>
                   </div>
                 </div>
               ) : (
@@ -2147,7 +2768,7 @@ function App() {
                   <textarea
                     value={message}
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Ask a question or leave a pulse here..."
+                    placeholder={copy.messagePlaceholder}
                   />
                   <div className="category-row">
                     {CATEGORIES.map((item) => (
@@ -2156,7 +2777,7 @@ function App() {
                         className={category === item ? "active" : ""}
                         onClick={() => setCategory(item)}
                       >
-                        {item}
+                        {getCategoryLabel(item, language)}
                       </button>
                     ))}
                   </div>
@@ -2167,7 +2788,7 @@ function App() {
             {!draftBooth && (
               <button className="send-button" onClick={submitPulse}>
                 <Send size={17} />
-                Send Pulse
+                {copy.sendPulse}
               </button>
             )}
           </div>
@@ -2177,7 +2798,7 @@ function App() {
           <section className="ai-card">
             <div className="panel-heading">
               <Bot size={17} />
-              <span>Stage Readout</span>
+              <span>{copy.stageReadout}</span>
             </div>
             <h2>{localAssistantSummary.focusLine}</h2>
             <p>{localAssistantSummary.recommendation}</p>
@@ -2185,15 +2806,19 @@ function App() {
               <span>{localAssistantSummary.primarySignal}</span>
               <span>
                 {duplicateGroups.length
-                  ? `${duplicateGroups.length} repeat cluster${
-                      duplicateGroups.length === 1 ? "" : "s"
-                    }`
-                  : "Fresh mix of questions"}
+                  ? language === "fr"
+                    ? `${duplicateGroups.length} groupe${
+                        duplicateGroups.length === 1 ? "" : "s"
+                      } répété${duplicateGroups.length === 1 ? "" : "s"}`
+                    : `${duplicateGroups.length} repeat cluster${
+                        duplicateGroups.length === 1 ? "" : "s"
+                      }`
+                  : copy.freshMix}
               </span>
               <span>
                 {blockedWordCount || suspiciousBurstCount
-                  ? "Safety alerts active"
-                  : "Safety layer steady"}
+                  ? copy.safetyAlertsActive
+                  : copy.safetyLayerSteady}
               </span>
             </div>
             <small>{localAssistantSummary.safetyLine}</small>
@@ -2203,7 +2828,7 @@ function App() {
             <section className="summary-card">
               <div className="panel-heading">
                 <WandSparkles size={16} />
-                <span>OpenAI Comment Summary</span>
+                <span>{copy.openAiCommentSummary}</span>
               </div>
 
               <div className="summary-status">
@@ -2212,9 +2837,9 @@ function App() {
                   <span>
                     {activeApiKey
                       ? activeApiKeySource === "browser"
-                        ? "Using browser key"
-                        : "Using env key"
-                      : "No API key connected"}
+                        ? copy.usingBrowserKey
+                        : copy.usingEnvKey
+                      : copy.noApiKeyConnected}
                   </span>
                 </div>
                 <div className="status-pill subtle">
@@ -2223,29 +2848,26 @@ function App() {
                 </div>
               </div>
 
-              <div className="summary-note">
-                Demo-friendly setup: you can paste a browser key here, but OpenAI recommends
-                keeping production keys on your backend instead of shipping them in the browser.
-              </div>
+              <div className="summary-note">{copy.summaryNote}</div>
 
               <div className="summary-form">
                 <label className="admin-field">
-                  <span>OpenAI API key</span>
+                  <span>{copy.openAiApiKey}</span>
                   <input
                     type="password"
                     value={apiKeyDraft}
                     onChange={(event) => setApiKeyDraft(event.target.value)}
                     placeholder={
                       ENV_OPENAI_API_KEY
-                        ? "Optional browser override for the env key"
-                        : "Paste a project key for comment summaries"
+                        ? copy.envKeyPlaceholder
+                        : copy.browserKeyPlaceholder
                     }
                   />
                 </label>
 
                 <div className="summary-form-row">
                   <label className="admin-field">
-                    <span>Summary model</span>
+                    <span>{copy.summaryModel}</span>
                     <select
                       value={openAiSettings.model}
                       onChange={(event) =>
@@ -2257,7 +2879,7 @@ function App() {
                     >
                       {SUMMARY_MODELS.map((model) => (
                         <option key={model.value} value={model.value}>
-                          {model.label} - {model.helper}
+                          {model.label} - {model.helpers[language]}
                         </option>
                       ))}
                     </select>
@@ -2274,12 +2896,12 @@ function App() {
                         }))
                       }
                     />
-                    <span>Auto summarize new comments</span>
+                    <span>{copy.autoSummarize}</span>
                   </label>
                 </div>
 
                 <div className="admin-actions">
-                  <button onClick={saveBrowserApiKey}>Save Key</button>
+                  <button onClick={saveBrowserApiKey}>{copy.saveKey}</button>
                   <button
                     className="secondary"
                     onClick={() => {
@@ -2287,7 +2909,7 @@ function App() {
                       setOpenAiSettings((prev) => ({ ...prev, browserKey: "" }));
                     }}
                   >
-                    Clear Saved Key
+                    {copy.clearSavedKey}
                   </button>
                   <button
                     className="secondary"
@@ -2297,12 +2919,12 @@ function App() {
                     {summaryLoading ? (
                       <>
                         <RefreshCcw size={15} className="spin" />
-                        Summarizing
+                        {copy.summarizing}
                       </>
                     ) : (
                       <>
                         <WandSparkles size={15} />
-                        Summarize Now
+                        {copy.summarizeNow}
                       </>
                     )}
                   </button>
@@ -2311,19 +2933,16 @@ function App() {
 
               <div className="summary-output">
                 <div className="summary-output-top">
-                  <strong>Generated summary</strong>
+                  <strong>{copy.generatedSummary}</strong>
                   {savedSummary.lastSummaryAt && (
                     <span>
-                      {formatClock(savedSummary.lastSummaryAt)} -{" "}
-                      {formatRelativeTime(savedSummary.lastSummaryAt)}
+                      {formatClock(savedSummary.lastSummaryAt, language)} -{" "}
+                      {formatRelativeTime(savedSummary.lastSummaryAt, language)}
                     </span>
                   )}
                 </div>
                 {summaryError && <div className="summary-error">{summaryError}</div>}
-                <pre>
-                  {savedSummary.text ||
-                    "No AI summary yet. Add a key, then click Summarize Now or turn on auto summarize."}
-                </pre>
+                <pre>{savedSummary.text || copy.noAiSummaryYet}</pre>
               </div>
             </section>
           )}
@@ -2332,18 +2951,15 @@ function App() {
             <section className="admin-card">
               <div className="panel-heading">
                 <Sparkles size={16} />
-                <span>Admin Poll Controls</span>
+                <span>{copy.adminPollControls}</span>
               </div>
-              <div className="admin-note">
-                Stage laptop only. Audience QR users stay on the vote-only view unless they open
-                the page with <code>?admin=1</code>.
-              </div>
+              <div className="admin-note">{copy.adminPollNote}</div>
               <label className="admin-field">
-                <span>Poll question</span>
+                <span>{copy.pollQuestionLabel}</span>
                 <input
                   value={poll.question}
                   onChange={(event) => updatePollQuestion(event.target.value)}
-                  placeholder="What do you want the audience to vote on?"
+                  placeholder={copy.pollQuestionPlaceholder}
                 />
               </label>
               <div className="admin-option-list">
@@ -2354,17 +2970,19 @@ function App() {
                       onChange={(event) =>
                         updatePollOptionLabel(option.id, event.target.value)
                       }
-                      placeholder={`Option ${index + 1}`}
+                      placeholder={copy.optionPlaceholder(index)}
                     />
-                    <span>{option.votes} votes</span>
-                    <button onClick={() => removePollOption(option.id)}>Remove</button>
+                    <span>
+                      {option.votes} {language === "fr" ? "votes" : "votes"}
+                    </span>
+                    <button onClick={() => removePollOption(option.id)}>{copy.remove}</button>
                   </div>
                 ))}
               </div>
               <div className="admin-actions">
-                <button onClick={addPollOption}>Add Option</button>
+                <button onClick={addPollOption}>{copy.addOption}</button>
                 <button className="secondary" onClick={resetPollVotes}>
-                  Reset Votes
+                  {copy.resetVotes}
                 </button>
               </div>
             </section>
@@ -2373,28 +2991,28 @@ function App() {
           <section className="metric-grid">
             <Metric
               icon={<Search size={16} />}
-              label="Indexed Questions"
+              label={copy.indexedQuestions}
               value={indexedQuestions}
-              helper="ready for Elastic search"
+              helper={copy.indexedQuestionsHelper}
             />
             <Metric
               icon={<Sparkles size={16} />}
-              label="Duplicated Questions"
+              label={copy.duplicateQuestions}
               value={duplicateQuestionCount}
-              helper="grouped for speaker clarity"
+              helper={copy.duplicateQuestionsHelper}
             />
             <Metric
               icon={<Shield size={16} />}
-              label="Blocked Words"
+              label={copy.blockedWords}
               value={blockedWordCount}
-              helper="moderation log"
+              helper={copy.blockedWordsHelper}
               alert
             />
             <Metric
               icon={<AlertTriangle size={16} />}
-              label="Suspicious Burst"
+              label={copy.suspiciousBurst}
               value={suspiciousBurstCount}
-              helper="browser spike alerts"
+              helper={copy.suspiciousBurstHelper}
               warning
             />
           </section>
@@ -2402,17 +3020,17 @@ function App() {
           <section className="cluster-card">
             <div className="panel-heading">
               <Vote size={16} />
-              <span>Repeat Clusters</span>
+              <span>{copy.repeatClusters}</span>
             </div>
             {duplicateGroups.length === 0 ? (
-              <div className="empty-feed">No duplicate question clusters yet.</div>
+              <div className="empty-feed">{copy.noDuplicateClusters}</div>
             ) : (
               <div className="cluster-list">
                 {duplicateGroups.slice(0, 4).map((group) => (
                   <article key={group.key} className="cluster-item">
                     <strong>{group.label}</strong>
                     <p>{group.sampleText}</p>
-                    <small>{group.count} matching questions</small>
+                    <small>{copy.matchingQuestions(group.count)}</small>
                   </article>
                 ))}
               </div>
@@ -2422,37 +3040,37 @@ function App() {
           <section className="elastic-card">
             <div className="panel-heading">
               <Activity size={16} />
-              <span>Elastic Live Layer</span>
+              <span>{copy.elasticLiveLayer}</span>
             </div>
             <div className="elastic-rows">
               <div>
-                <strong>Supabase Sync</strong>
+                <strong>{copy.supabaseSync}</strong>
                 <span>
                   {!isSupabaseConfigured
-                    ? "Add Supabase env vars to enable shared live state."
+                    ? copy.addSupabaseEnv
                     : supabaseLoading
-                      ? "Loading booths, questions, and poll votes from Supabase."
+                      ? copy.loadingSupabase
                       : supabaseError
-                        ? `Sync issue: ${supabaseError}`
+                        ? copy.syncIssue(supabaseError)
                         : supabaseStatus === "live"
-                          ? "Realtime sync is active for connected phones and laptops."
-                          : "Shared data loaded. Waiting for realtime confirmation."}
+                          ? copy.realtimeActive
+                          : copy.sharedLoaded}
                 </span>
               </div>
               <div>
-                <strong>Search</strong>
-                <span>Questions, booths, zones, categories, and map pulses</span>
+                <strong>{copy.search}</strong>
+                <span>{copy.searchDescription}</span>
               </div>
               <div>
-                <strong>Security</strong>
-                <span>Banned words, burst detection, and repeated-input alerts</span>
+                <strong>{copy.security}</strong>
+                <span>{copy.securityDescription}</span>
               </div>
               <div>
-                <strong>Observability</strong>
-                <span>Votes, pulse submissions, level switches, and summary events</span>
+                <strong>{copy.observability}</strong>
+                <span>{copy.observabilityDescription}</span>
               </div>
               <div>
-                <strong>No-login ID</strong>
+                <strong>{copy.noLoginId}</strong>
                 <span>{browserId}</span>
               </div>
             </div>
@@ -2461,23 +3079,23 @@ function App() {
           <section className="feed-card">
             <div className="panel-heading">
               <Search size={16} />
-              <span>Live Feed</span>
+              <span>{copy.liveFeed}</span>
             </div>
 
             <div className="feed-heading">
               <strong>
                 {searchTerm
-                  ? `${displayedFeed.length} matching result${displayedFeed.length === 1 ? "" : "s"}`
-                  : `${allPulses.length} live pulses indexed`}
+                  ? copy.matchingResults(displayedFeed.length)
+                  : copy.livePulsesIndexed(allPulses.length)}
               </strong>
               <span>
                 {searchTerm
                   ? elasticSearchLoading
-                    ? `Elastic fuzzy search is checking "${searchTerm}"...`
+                    ? copy.elasticChecking(searchTerm)
                     : elasticSearchError
-                      ? `Elastic search is unavailable, showing live local matches for "${searchTerm}".`
-                      : `Elastic + live matches for "${searchTerm}"`
-                  : "Latest audience signal across the venue"}
+                      ? copy.elasticUnavailable(searchTerm)
+                      : copy.elasticMatches(searchTerm)
+                  : copy.latestAudienceSignal}
               </span>
             </div>
 
@@ -2488,25 +3106,25 @@ function App() {
                   className={feedFilter === item ? "active" : ""}
                   onClick={() => setFeedFilter(item)}
                 >
-                  {item}
+                  {item === "All" ? (language === "fr" ? "Tout" : "All") : getCategoryLabel(item, language)}
                 </button>
               ))}
             </div>
 
             <div className="feed-list">
               {displayedFeed.length === 0 ? (
-                <div className="empty-feed">No matching pulses yet.</div>
+                <div className="empty-feed">{copy.noMatchingPulses}</div>
               ) : (
                 displayedFeed.slice(0, 12).map((pulse) => (
                   <article key={pulse.id} className="feed-item">
                     <div className="feed-item-top">
                       <strong>{pulse.text}</strong>
-                      <span className="pulse-kind">{pulse.type}</span>
+                      <span className="pulse-kind">{getCategoryLabel(pulse.type, language)}</span>
                     </div>
                     <div className="feed-meta">
                       <span>{pulse.boothShortName}</span>
-                      <span>{LEVELS[pulse.level].label}</span>
-                      <span>{formatClock(pulse.createdAt)}</span>
+                      <span>{getLevelLabel(pulse.level, language)}</span>
+                      <span>{formatClock(pulse.createdAt, language)}</span>
                     </div>
                   </article>
                 ))
@@ -2515,6 +3133,33 @@ function App() {
           </section>
         </aside>
       </main>
+
+      <footer className="site-footnote">
+        <span>
+          {copy.builtBy} <strong>{copy.teamName}</strong>
+        </span>
+        <span>
+          {copy.teamMembers}: <strong>Kairui, Bernie, Dreyson</strong>
+        </span>
+      </footer>
+
+      {showLanguagePrompt && (
+        <div className="language-modal-backdrop" role="presentation">
+          <div
+            className="language-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="language-modal-title"
+          >
+            <h2 id="language-modal-title">{copy.languagePromptTitle}</h2>
+            <p>{copy.languagePromptBody}</p>
+            <div className="language-modal-actions">
+              <button onClick={() => setPreferredLanguage("en")}>{copy.chooseEnglish}</button>
+              <button onClick={() => setPreferredLanguage("fr")}>{copy.chooseFrench}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <div className={`toast ${toast.tone}`}>{toast.text}</div>}
     </div>
