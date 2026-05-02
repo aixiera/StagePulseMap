@@ -43,7 +43,98 @@ const LEVELS = {
 };
 
 const CATEGORIES = ["Question", "Praise", "Need Help", "Long Line", "Fun"];
-const BANNED_WORDS = ["spam", "stupid", "idiot", "hate", "kill"];
+const RAW_BANNED_WORDS = [
+  "spam",
+  "stupid",
+  "idiot",
+  "hate",
+  "kill",
+  "salty",
+  "damn",
+  "hell",
+  "crap",
+  "shit",
+  "bullshit",
+  "piss",
+  "ass",
+  "asshole",
+  "bastard",
+  "bitch",
+  "fuck",
+  "fucking",
+  "motherfucker",
+  "dick",
+  "dickhead",
+  "prick",
+  "douche",
+  "douchebag",
+  "jackass",
+  "dumbass",
+  "moron",
+  "loser",
+  "jerk",
+  "tool",
+  "clown",
+  "creep",
+  "trash",
+  "garbage",
+  "shut up",
+  "screw you",
+  "toxic",
+  "fake",
+  "annoying",
+  "bloody",
+  "twat",
+  "wanker",
+  "arse",
+  "arsehole",
+  "bollocks",
+  "slag",
+  "nitwit",
+  "dimwit",
+  "dipshit",
+  "jerkwad",
+  "scumbag",
+  "sleazebag",
+  "low-life",
+  "deadbeat",
+  "freeloader",
+  "leech",
+  "rat",
+  "snake",
+  "backstabber",
+  "two-faced",
+  "phony",
+  "poser",
+  "wannabe",
+  "bigmouth",
+  "loudmouth",
+  "smartass",
+  "wiseass",
+  "know-it-all",
+  "drama queen",
+  "crybaby",
+  "coward",
+  "brat",
+  "spoiled",
+  "entitled",
+  "lazy",
+  "bum",
+  "slacker",
+  "mess",
+  "wreck",
+  "trainwreck",
+  "clueless",
+  "oblivious",
+  "dense",
+  "pathetic",
+  "ridiculous",
+  "dumb",
+  "brain-dead",
+  "mindless",
+  "worthless",
+];
+const BANNED_WORDS = [...new Set(RAW_BANNED_WORDS.map((word) => normalizeText(word)))];
 const COLOR_ROTATION = ["cyan", "purple", "amber", "green"];
 const SUMMARY_MODELS = [
   {
@@ -73,9 +164,37 @@ const SUMMARY_MODELS = [
 ];
 
 const LANGUAGE_STORAGE_KEY = "stagepulse-language-v1";
+const VIEW_MODE_STORAGE_KEY = "stagepulse-view-mode-v1";
 const LOCALE_BY_LANGUAGE = {
   en: "en-CA",
   fr: "fr-CA",
+};
+
+const COMMON_LANGUAGE_HINTS = {
+  en: [
+    "the",
+    "and",
+    "is",
+    "are",
+    "with",
+    "this",
+    "that",
+    "line",
+    "help",
+    "question",
+  ],
+  fr: [
+    " le ",
+    " la ",
+    " les ",
+    " des ",
+    " une ",
+    " est ",
+    " avec ",
+    " pour ",
+    "question",
+    "aide",
+  ],
 };
 
 const CATEGORY_LABELS = {
@@ -98,6 +217,10 @@ const CATEGORY_LABELS = {
 const UI_COPY = {
   en: {
     languageLabel: "Language",
+    liveView: "Live",
+    dataView: "Data",
+    dataViewLabel: "Data view",
+    liveViewLabel: "Live view",
     languagePromptTitle: "Choose your language",
     languagePromptBody:
       "Select English or French for this device. You can change it anytime from the top-left corner.",
@@ -106,6 +229,7 @@ const UI_COPY = {
     live: "LIVE",
     adminMode: "Admin mode",
     audienceMode: "Audience mode",
+    adminAccessMode: "Admin access",
     brandDescription:
       "Audience members scan a QR code, vote in the live poll, tap a location, and leave questions or pulses without logging in.",
     anonymousBrowser: "Anonymous browser",
@@ -191,6 +315,13 @@ const UI_COPY = {
       "Votes, pulse submissions, level switches, and summary events",
     noLoginId: "No-login ID",
     liveFeed: "Live Feed",
+    dataViewTitle: "Data View",
+    dataViewDescription:
+      "Deeper event intelligence, Elastic-facing metrics, repeat clusters, and live venue signals.",
+    adminTools: "Admin Tools",
+    adminToolsIntro:
+      "Admins can view the full audience experience first, then scroll down for poll controls and AI summary tools.",
+    jumpToAdmin: "Jump to admin tools",
     matchingResults: (count) => `${count} matching result${count === 1 ? "" : "s"}`,
     livePulsesIndexed: (count) => `${count} live pulses indexed`,
     elasticChecking: (query) => `Elastic fuzzy search is checking "${query}"...`,
@@ -262,6 +393,10 @@ const UI_COPY = {
   },
   fr: {
     languageLabel: "Langue",
+    liveView: "Direct",
+    dataView: "Données",
+    dataViewLabel: "Vue données",
+    liveViewLabel: "Vue direct",
     languagePromptTitle: "Choisissez votre langue",
     languagePromptBody:
       "Sélectionnez l’anglais ou le français pour cet appareil. Vous pourrez la modifier en tout temps dans le coin supérieur gauche.",
@@ -270,6 +405,7 @@ const UI_COPY = {
     live: "EN DIRECT",
     adminMode: "Mode admin",
     audienceMode: "Mode public",
+    adminAccessMode: "Accès admin",
     brandDescription:
       "Les participants scannent un code QR, votent au sondage en direct, touchent un emplacement et laissent des questions ou des impulsions sans se connecter.",
     anonymousBrowser: "Navigateur anonyme",
@@ -359,6 +495,13 @@ const UI_COPY = {
       "Votes, envois d’impulsions, changements de niveau et événements de résumé",
     noLoginId: "ID sans connexion",
     liveFeed: "Fil en direct",
+    dataViewTitle: "Vue données",
+    dataViewDescription:
+      "Informations plus détaillées sur l’événement, métriques liées à Elastic, groupes répétés et signaux en direct du lieu.",
+    adminTools: "Outils admin",
+    adminToolsIntro:
+      "Les admins voient d’abord toute l’expérience publique, puis peuvent descendre vers les contrôles du sondage et les outils de résumé IA.",
+    jumpToAdmin: "Aller aux outils admin",
     matchingResults: (count) => `${count} résultat${count === 1 ? "" : "s"} correspondant${count === 1 ? "" : "s"}`,
     livePulsesIndexed: (count) => `${count} impulsions en direct indexées`,
     elasticChecking: (query) => `La recherche floue Elastic vérifie « ${query} »...`,
@@ -453,110 +596,6 @@ function seedPulse(id, type, text, createdAt, browserId = "demo-seed") {
 }
 
 const INITIAL_BOOTHS = [
-  {
-    id: "main-stage",
-    name: "Peter Brown Family Centre Stage",
-    shortName: "Main Stage",
-    level: "level1",
-    x: 20,
-    y: 63,
-    color: "cyan",
-    pulses: [
-      seedPulse(
-        "p-main-1",
-        "Question",
-        "Can you show how repeated questions are grouped on stage?",
-        minutesAgo(3),
-        "audience-101"
-      ),
-      seedPulse(
-        "p-main-2",
-        "Praise",
-        "Main stage energy is perfect for the live demo.",
-        minutesAgo(16),
-        "audience-102"
-      ),
-    ],
-  },
-  {
-    id: "connection-zone",
-    name: "Connection Zone",
-    shortName: "Sponsor Booths",
-    level: "level1",
-    x: 82,
-    y: 54,
-    color: "purple",
-    pulses: [
-      seedPulse(
-        "p-conn-1",
-        "Question",
-        "How does this work without login?",
-        minutesAgo(5),
-        "audience-114"
-      ),
-    ],
-  },
-  {
-    id: "bits-bytes",
-    name: "Bits and Bytes Lab",
-    shortName: "Hacker Room",
-    level: "level1",
-    x: 14,
-    y: 52,
-    color: "green",
-    pulses: [
-      seedPulse(
-        "p-bits-1",
-        "Question",
-        "Can people ask anonymously without logging in?",
-        minutesAgo(2),
-        "audience-118"
-      ),
-      seedPulse(
-        "p-bits-2",
-        "Need Help",
-        "Need another power strip in the hacker room.",
-        minutesAgo(21),
-        "audience-119"
-      ),
-    ],
-  },
-  {
-    id: "feature-exhibition",
-    name: "Feature Exhibition",
-    shortName: "Feature Exhibition",
-    level: "level2",
-    x: 23,
-    y: 28,
-    color: "purple",
-    pulses: [
-      seedPulse(
-        "p-feature-1",
-        "Question",
-        "Will repeated questions be merged before the speaker answers?",
-        minutesAgo(7),
-        "audience-124"
-      ),
-    ],
-  },
-  {
-    id: "snack-lab",
-    name: "Snack Lab",
-    shortName: "Food Area",
-    level: "level2",
-    x: 84,
-    y: 68,
-    color: "amber",
-    pulses: [
-      seedPulse(
-        "p-snack-1",
-        "Long Line",
-        "Food area line is growing near Snack Lab.",
-        minutesAgo(1),
-        "audience-131"
-      ),
-    ],
-  },
 ];
 
 const INITIAL_POLL = {
@@ -710,12 +749,20 @@ const INITIAL_POLL_SELECTION = {
 
 const POLL_CONFIG_STORAGE_KEY = "stagepulse-poll-config-v1";
 const STAGEPULSE_META_PREFIX = "__stagepulse__";
+const LOCAL_BOOTHS_STORAGE_KEY = "stagepulse-booths-v3";
 
 function getStoredLanguage() {
   if (typeof window === "undefined") return null;
 
   const storedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
   return storedLanguage === "fr" ? "fr" : storedLanguage === "en" ? "en" : null;
+}
+
+function getStoredViewMode() {
+  if (typeof window === "undefined") return "live";
+
+  const storedViewMode = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  return storedViewMode === "data" ? "data" : "live";
 }
 
 function readStoredJson(key, fallback) {
@@ -770,6 +817,10 @@ function getStoredPollConfig() {
 
 function fallbackShortName(name) {
   return name.length > 18 ? `${name.slice(0, 18)}...` : name;
+}
+
+function createTranslationCacheKey(targetLanguage, text) {
+  return `${targetLanguage}::${normalizeText(text)}`;
 }
 
 function getLevelLabel(level, language) {
@@ -1072,6 +1123,27 @@ function normalizeText(text) {
     .trim();
 }
 
+function detectLikelyLanguage(text) {
+  const normalized = ` ${normalizeText(text)} `;
+  if (!normalized.trim()) return null;
+
+  if (/[àâçéèêëîïôûùüÿœ]/i.test(String(text))) {
+    return "fr";
+  }
+
+  const englishScore = COMMON_LANGUAGE_HINTS.en.reduce(
+    (score, token) => score + (normalized.includes(` ${token} `) ? 1 : 0),
+    0
+  );
+  const frenchScore = COMMON_LANGUAGE_HINTS.fr.reduce(
+    (score, token) => score + (normalized.includes(token) ? 1 : 0),
+    0
+  );
+
+  if (englishScore === frenchScore) return null;
+  return englishScore > frenchScore ? "en" : "fr";
+}
+
 function similarQuestionKey(text) {
   const normalized = normalizeText(text);
 
@@ -1284,9 +1356,12 @@ function sendObservabilityMetric(metric) {
 function App() {
   const toastTimerRef = useRef(null);
   const summaryTimerRef = useRef(null);
+  const adminSectionRef = useRef(null);
+  const translationJobsRef = useRef(new Set());
 
   const [language, setLanguage] = useState(() => getStoredLanguage() ?? "en");
   const [showLanguagePrompt, setShowLanguagePrompt] = useState(() => !getStoredLanguage());
+  const [viewMode, setViewMode] = useState(() => getStoredViewMode());
   const [browserId] = useState(() => getBrowserId());
   const [adminMode] = useState(
     () =>
@@ -1297,7 +1372,7 @@ function App() {
 
   const [activeLevel, setActiveLevel] = useState("level1");
   const [localBooths, setLocalBooths] = useState(() =>
-    readStoredJson("stagepulse-booths-v2", INITIAL_BOOTHS)
+    readStoredJson(LOCAL_BOOTHS_STORAGE_KEY, INITIAL_BOOTHS)
   );
   const [supabaseBooths, setSupabaseBooths] = useState([]);
   const [supabaseQuestions, setSupabaseQuestions] = useState([]);
@@ -1324,7 +1399,7 @@ function App() {
     readStoredJson("stagepulse-summary-v1", INITIAL_SUMMARY_STATE)
   );
 
-  const [selectedBoothId, setSelectedBoothId] = useState("main-stage");
+  const [selectedBoothId, setSelectedBoothId] = useState("");
   const [category, setCategory] = useState("Question");
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -1339,6 +1414,9 @@ function App() {
   const [toast, setToast] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  const [translationCache, setTranslationCache] = useState(() =>
+    readStoredJson("stagepulse-translation-cache-v1", {})
+  );
   const [apiKeyDraft, setApiKeyDraft] = useState(
     readStoredJson("stagepulse-openai-v1", INITIAL_OPENAI_SETTINGS).browserKey ?? ""
   );
@@ -1349,8 +1427,13 @@ function App() {
   }, [language]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
     if (!isSupabaseConfigured) {
-      writeStoredJson("stagepulse-booths-v2", localBooths);
+      writeStoredJson(LOCAL_BOOTHS_STORAGE_KEY, localBooths);
     }
   }, [localBooths]);
 
@@ -1381,6 +1464,10 @@ function App() {
   useEffect(() => {
     writeStoredJson("stagepulse-summary-v1", savedSummary);
   }, [savedSummary]);
+
+  useEffect(() => {
+    writeStoredJson("stagepulse-translation-cache-v1", translationCache);
+  }, [translationCache]);
 
   useEffect(() => {
     sendObservabilityMetric({ type: "page-load", browserId });
@@ -1595,8 +1682,12 @@ function App() {
       .map(([key, items]) => ({
         key,
         count: items.length,
-        sampleText: items[0]?.text ?? "",
-        label: labelQuestionCluster(key, items[0]?.text ?? "Audience question", language),
+        sampleText: items[0] ? getDisplayCommentText(items[0].text) : "",
+        label: labelQuestionCluster(
+          key,
+          items[0] ? getDisplayCommentText(items[0].text) : "Audience question",
+          language
+        ),
         latestAt: items[0]?.createdAt ?? minutesAgo(0),
       }))
       .filter((group) => group.count > 1)
@@ -1604,7 +1695,7 @@ function App() {
         if (b.count !== a.count) return b.count - a.count;
         return new Date(b.latestAt) - new Date(a.latestAt);
       });
-  }, [allPulses, language]);
+  }, [allPulses, language, translationCache]);
 
   const topDuplicateGroup = duplicateGroups[0] ?? null;
   const duplicateQuestionCount = duplicateGroups.reduce(
@@ -1636,24 +1727,67 @@ function App() {
     .filter((booth) => booth.level === activeLevel)
     .reduce((sum, booth) => sum + booth.pulses.length, 0);
 
+  const translatedPulses = useMemo(
+    () =>
+      allPulses.map((pulse) => ({
+        ...pulse,
+        displayText: getDisplayCommentText(pulse.text),
+      })),
+    [allPulses, language, translationCache]
+  );
+
+  useEffect(() => {
+    if (!activeApiKey) return;
+
+    const translationTargets = translatedPulses
+      .slice(0, 30)
+      .filter((pulse) => detectLikelyLanguage(pulse.text) && detectLikelyLanguage(pulse.text) !== language);
+
+    for (const pulse of translationTargets) {
+      const cacheKey = createTranslationCacheKey(language, pulse.text);
+      if (translationCache[cacheKey] || translationJobsRef.current.has(cacheKey)) {
+        continue;
+      }
+
+      translationJobsRef.current.add(cacheKey);
+      void translateCommentText(pulse.text, language)
+        .then((translatedText) => {
+          setTranslationCache((prev) => ({
+            ...prev,
+            [cacheKey]: translatedText || pulse.text,
+          }));
+        })
+        .catch(() => {
+          setTranslationCache((prev) => ({
+            ...prev,
+            [cacheKey]: pulse.text,
+          }));
+        })
+        .finally(() => {
+          translationJobsRef.current.delete(cacheKey);
+        });
+    }
+  }, [activeApiKey, language, translatedPulses, translationCache]);
+
   const liveFeed = useMemo(() => {
     const query = normalizeText(searchTerm);
-    return allPulses.filter((pulse) => {
+    return translatedPulses.filter((pulse) => {
       const matchesQuery =
         !query ||
         [
           pulse.text,
+          pulse.displayText,
           pulse.boothName,
           pulse.boothShortName,
           pulse.type,
-          LEVELS[pulse.level]?.label ?? "",
+          getLevelLabel(pulse.level, language),
         ].some((field) => normalizeText(field).includes(query));
 
       const matchesFilter = feedFilter === "All" || pulse.type === feedFilter;
 
       return matchesQuery && matchesFilter;
     });
-  }, [allPulses, searchTerm, feedFilter]);
+  }, [feedFilter, language, searchTerm, translatedPulses]);
 
   useEffect(() => {
     const query = searchTerm.trim();
@@ -1822,6 +1956,52 @@ function App() {
     setShowLanguagePrompt(false);
   }
 
+  function scrollToAdminSection() {
+    adminSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  function getDisplayCommentText(text) {
+    const cacheKey = createTranslationCacheKey(language, text);
+    return translationCache[cacheKey] || text;
+  }
+
+  async function translateCommentText(sourceText, targetLanguage) {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${activeApiKey}`,
+      },
+      body: JSON.stringify({
+        model: openAiSettings.model,
+        store: false,
+        input: [
+          {
+            role: "developer",
+            content:
+              targetLanguage === "fr"
+                ? "Traduis le commentaire en français canadien naturel. Réponds uniquement avec le texte traduit."
+                : "Translate the comment into natural Canadian English. Respond with only the translated text.",
+          },
+          {
+            role: "user",
+            content: sourceText,
+          },
+        ],
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Comment translation failed.");
+    }
+
+    return extractResponseText(data) || sourceText;
+  }
+
   async function insertBoothIntoSupabase(booth) {
     if (!supabase) {
       throw new Error("Supabase client is not configured.");
@@ -1962,7 +2142,7 @@ function App() {
             },
             {
               role: "user",
-              content: buildSummaryPrompt(language, allPulses, duplicateGroups, selectedBooth),
+              content: buildSummaryPrompt(language, translatedPulses, duplicateGroups, selectedBooth),
             },
           ],
         }),
@@ -2524,477 +2704,224 @@ function App() {
     showToast(copy.pulseSentTo(getCategoryLabel(category, language), selectedBooth.shortName), "success");
   }
 
-  return (
-    <div className="app-shell">
-      <div className="language-corner" aria-label={copy.languageLabel}>
-        <button
-          className={language === "en" ? "active" : ""}
-          onClick={() => setPreferredLanguage("en")}
-        >
-          EN
-        </button>
-        <button
-          className={language === "fr" ? "active" : ""}
-          onClick={() => setPreferredLanguage("fr")}
-        >
-          FR
-        </button>
-      </div>
+  const indexedQuestionsCard = (
+    <Metric
+      icon={<Search size={16} />}
+      label={copy.indexedQuestions}
+      value={indexedQuestions}
+      helper={copy.indexedQuestionsHelper}
+    />
+  );
 
-      <header className="topbar">
-        <section className="brand-panel">
-          <div className="brand-meta">
-            <div className="live-pill">
-              <span className="live-dot" />
-              {copy.live}
-            </div>
-            <div className="meta-chip">Cloud Summit x Science World</div>
-            <div className="meta-chip">{adminMode ? copy.adminMode : copy.audienceMode}</div>
-          </div>
+  function renderStageReadoutCard() {
+    return (
+      <section className="ai-card">
+        <div className="panel-heading">
+          <Bot size={17} />
+          <span>{copy.stageReadout}</span>
+        </div>
+        <h2>{localAssistantSummary.focusLine}</h2>
+        <p>{localAssistantSummary.recommendation}</p>
+        <div className="assistant-pills">
+          <span>{localAssistantSummary.primarySignal}</span>
+          <span>
+            {duplicateGroups.length
+              ? language === "fr"
+                ? `${duplicateGroups.length} groupe${duplicateGroups.length === 1 ? "" : "s"} répété${
+                    duplicateGroups.length === 1 ? "" : "s"
+                  }`
+                : `${duplicateGroups.length} repeat cluster${duplicateGroups.length === 1 ? "" : "s"}`
+              : copy.freshMix}
+          </span>
+          <span>
+            {blockedWordCount || suspiciousBurstCount
+              ? copy.safetyAlertsActive
+              : copy.safetyLayerSteady}
+          </span>
+        </div>
+        <small>{localAssistantSummary.safetyLine}</small>
+      </section>
+    );
+  }
 
-          <div className="brand-copy">
-            <h1>StagePulse Map</h1>
-            <p>{copy.brandDescription}</p>
-          </div>
+  function renderAdminSections() {
+    if (!adminMode) return null;
 
-          <div className="brand-footer">
-            <div>
-              <span>{copy.anonymousBrowser}</span>
-              <strong>{browserId.slice(-10)}</strong>
-            </div>
-            <div className="mini-stat">
-              <span>{copy.liveComments}</span>
-              <strong>{totalPulses}</strong>
-            </div>
-          </div>
-        </section>
-
-        <section className="poll-panel">
+    return (
+      <div ref={adminSectionRef} className="admin-scroll-stack">
+        <section className="summary-card">
           <div className="panel-heading">
-            <Vote size={16} />
-            <span>{copy.audiencePoll}</span>
+            <WandSparkles size={16} />
+            <span>{copy.openAiCommentSummary}</span>
           </div>
-          <h2 className="poll-question">{poll.question}</h2>
-          <p className="panel-copy">{copy.pollDescription}</p>
-          <div className="poll-options">
-            {poll.options.map((option, index) => {
-              const percent = totalVotes ? Math.round((option.votes / totalVotes) * 100) : 0;
-              return (
-                <button
-                  key={option.id}
-                  className={`poll-choice ${
-                    selectedPollOptionId === option.id ? "selected" : ""
-                  }`}
-                  style={{ "--fill": `${percent}%` }}
-                  onClick={() => handleVote(option.id)}
-                >
-                  <span>{displayPollLabel(option.label, index)}</span>
-                  <strong>{percent}%</strong>
-                </button>
-              );
-            })}
-          </div>
-        </section>
 
-        <section className="popular-card">
-          <span>{copy.mostPopularVote}</span>
-          <strong>{mostPopularVote.label}</strong>
-          <small>
-            {mostPopularVote.votes} {language === "fr" ? "votes en direct" : "live votes"} -{" "}
-            {mostPopularShare}% {language === "fr" ? "de part" : "share"}
-          </small>
-          <div className="turnout-pill">{copy.audienceVotesCaptured(totalVotes)}</div>
-        </section>
-      </header>
-
-      <main className="workspace">
-        <section className="map-card">
-          <div className="map-toolbar">
-            <div className="level-tabs">
-              {Object.entries(LEVELS).map(([level, value]) => (
-                <button
-                  key={level}
-                  className={activeLevel === level ? "active" : ""}
-                  onClick={() => handleLevelChange(level)}
-                >
-                  {value.labels[language]}
-                </button>
-              ))}
+          <div className="summary-status">
+            <div className="status-pill">
+              <KeyRound size={14} />
+              <span>
+                {activeApiKey
+                  ? activeApiKeySource === "browser"
+                    ? copy.usingBrowserKey
+                    : copy.usingEnvKey
+                  : copy.noApiKeyConnected}
+              </span>
             </div>
+            <div className="status-pill subtle">
+              <Activity size={14} />
+              <span>{openAiSettings.model}</span>
+            </div>
+          </div>
 
-            <button
-              className={addBoothMode ? "add-booth active" : "add-booth"}
-              onClick={() => {
-                const nextValue = !addBoothMode;
-                setAddBoothMode(nextValue);
-                if (!nextValue) {
-                  setDraftBooth(null);
-                  setBoothName("");
-                }
-              }}
-            >
-              <CirclePlus size={16} />
-              {addBoothMode ? copy.clickMapToPlaceBooth : copy.addBooth}
-            </button>
+          <div className="summary-note">{copy.summaryNote}</div>
 
-            <label className="search-box">
-              <Search size={16} />
+          <div className="summary-form">
+            <label className="admin-field">
+              <span>{copy.openAiApiKey}</span>
               <input
-                value={searchTerm}
-                onChange={handleSearchChange}
-                placeholder={copy.searchPlaceholder}
+                type="password"
+                value={apiKeyDraft}
+                onChange={(event) => setApiKeyDraft(event.target.value)}
+                placeholder={ENV_OPENAI_API_KEY ? copy.envKeyPlaceholder : copy.browserKeyPlaceholder}
               />
             </label>
-          </div>
 
-          <div className={`map-stage ${activeLevel}`} onClick={handleMapClick}>
-            <img src={activeLevelMeta.image} alt={`${getLevelLabel(activeLevel, language)} map`} />
+            <div className="summary-form-row">
+              <label className="admin-field">
+                <span>{copy.summaryModel}</span>
+                <select
+                  value={openAiSettings.model}
+                  onChange={(event) =>
+                    setOpenAiSettings((prev) => ({
+                      ...prev,
+                      model: event.target.value,
+                    }))
+                  }
+                >
+                  {SUMMARY_MODELS.map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label} - {model.helpers[language]}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <div className="map-stage-label">
-              <strong>{getLevelLabel(activeLevel, language)}</strong>
-              <span>{getLevelCaption(activeLevel, language)}</span>
+              <label className="toggle-field">
+                <input
+                  type="checkbox"
+                  checked={openAiSettings.autoSummarize}
+                  onChange={(event) =>
+                    setOpenAiSettings((prev) => ({
+                      ...prev,
+                      autoSummarize: event.target.checked,
+                    }))
+                  }
+                />
+                <span>{copy.autoSummarize}</span>
+              </label>
             </div>
 
-            <div className="map-instruction">
-              {addBoothMode
-                ? copy.addModeInstruction
-                : copy.defaultMapInstruction}
-            </div>
-
-            {visibleBooths.map((booth) => (
+            <div className="admin-actions">
+              <button onClick={saveBrowserApiKey}>{copy.saveKey}</button>
               <button
-                key={booth.id}
-                className={`map-pin ${booth.color} ${
-                  selectedBoothId === booth.id ? "selected" : ""
-                }`}
-                style={{ left: `${booth.x}%`, top: `${booth.y}%` }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setSelectedBoothId(booth.id);
-                  setAddBoothMode(false);
-                  setDraftBooth(null);
+                className="secondary"
+                onClick={() => {
+                  setApiKeyDraft("");
+                  setOpenAiSettings((prev) => ({ ...prev, browserKey: "" }));
                 }}
-                title={booth.name}
               >
-                <MapPin size={18} />
-                <span>{booth.shortName}</span>
+                {copy.clearSavedKey}
               </button>
-            ))}
-
-            {draftBooth && draftBooth.level === activeLevel && (
-              <div
-                className={`draft-pin ${draftBooth.color}`}
-                style={{ left: `${draftBooth.x}%`, top: `${draftBooth.y}%` }}
+              <button
+                className="secondary"
+                onClick={() => void summarizeComments()}
+                disabled={summaryLoading}
               >
-                <MapPin size={18} />
-                New Booth
-              </div>
-            )}
-
-            {selectedBooth && selectedBooth.level === activeLevel && (
-              <div
-                className={`map-bubble ${selectedBooth.x > 62 ? "flip" : ""}`}
-                style={{ left: `${selectedBooth.x}%`, top: `${selectedBooth.y}%` }}
-              >
-                <strong>{selectedBooth.shortName}</strong>
-                <p>
-                  {selectedBooth.pulses[0]?.text ??
-                    (language === "fr"
-                      ? "Aucune impulsion pour l’instant. Soyez la première voix du public dans cette zone."
-                      : "No pulses yet. Be the first audience voice in this zone.")}
-                </p>
-                <small>
-                  {selectedBooth.pulses[0]
-                    ? `${getCategoryLabel(selectedBooth.pulses[0].type, language)} - ${formatClock(
-                        selectedBooth.pulses[0].createdAt,
-                        language
-                      )}`
-                    : language === "fr"
-                      ? "En attente de la première impulsion"
-                      : "Waiting for the first pulse"}
-                </small>
-              </div>
-            )}
+                {summaryLoading ? (
+                  <>
+                    <RefreshCcw size={15} className="spin" />
+                    {copy.summarizing}
+                  </>
+                ) : (
+                  <>
+                    <WandSparkles size={15} />
+                    {copy.summarizeNow}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          <div className="composer">
-            <div className="composer-main">
-              <div className="selected-zone">
-                <CheckCircle2 size={16} />
-                {draftBooth
-                  ? copy.newBoothOnLevel(getLevelLabel(draftBooth.level, language))
-                  : copy.selectedBooth(selectedBooth?.name ?? copy.selectedFallback)}
-              </div>
-
-              <div className="context-strip">
-                <div>
-                  <span>{copy.currentLevel}</span>
-                  <strong>{getLevelLabel(activeLevel, language)}</strong>
-                </div>
-                <div>
-                  <span>{copy.visibleBooths}</span>
-                  <strong>{visibleBooths.length}</strong>
-                </div>
-                <div>
-                  <span>{copy.levelPulses}</span>
-                  <strong>{levelPulseCount}</strong>
-                </div>
-              </div>
-
-              {adminMode && selectedBooth?.custom && !draftBooth && (
-                <div className="new-booth-actions">
-                  <button className="secondary" onClick={removeSelectedBooth}>
-                    {copy.removeBooth}
-                  </button>
-                </div>
-              )}
-
-              {draftBooth ? (
-                <div className="new-booth-form">
-                  <input
-                    value={boothName}
-                    onChange={(event) => setBoothName(event.target.value)}
-                    placeholder={copy.newBoothPlaceholder}
-                  />
-                  <div className="new-booth-actions">
-                    <button className="secondary" onClick={cancelBoothCreation}>
-                      {copy.cancel}
-                    </button>
-                    <button onClick={createBooth}>{copy.createBooth}</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <textarea
-                    value={message}
-                    onChange={(event) => setMessage(event.target.value)}
-                    placeholder={copy.messagePlaceholder}
-                  />
-                  <div className="category-row">
-                    {CATEGORIES.map((item) => (
-                      <button
-                        key={item}
-                        className={category === item ? "active" : ""}
-                        onClick={() => setCategory(item)}
-                      >
-                        {getCategoryLabel(item, language)}
-                      </button>
-                    ))}
-                  </div>
-                </>
+          <div className="summary-output">
+            <div className="summary-output-top">
+              <strong>{copy.generatedSummary}</strong>
+              {savedSummary.lastSummaryAt && (
+                <span>
+                  {formatClock(savedSummary.lastSummaryAt, language)} -{" "}
+                  {formatRelativeTime(savedSummary.lastSummaryAt, language)}
+                </span>
               )}
             </div>
-
-            {!draftBooth && (
-              <button className="send-button" onClick={submitPulse}>
-                <Send size={17} />
-                {copy.sendPulse}
-              </button>
-            )}
+            {summaryError && <div className="summary-error">{summaryError}</div>}
+            <pre>{savedSummary.text || copy.noAiSummaryYet}</pre>
           </div>
         </section>
 
-        <aside className="insight-panel">
-          <section className="ai-card">
+        <section className="admin-card">
+          <div className="panel-heading">
+            <Sparkles size={16} />
+            <span>{copy.adminPollControls}</span>
+          </div>
+          <div className="admin-note">{copy.adminPollNote}</div>
+          <label className="admin-field">
+            <span>{copy.pollQuestionLabel}</span>
+            <input
+              value={poll.question}
+              onChange={(event) => updatePollQuestion(event.target.value)}
+              placeholder={copy.pollQuestionPlaceholder}
+            />
+          </label>
+          <div className="admin-option-list">
+            {poll.options.map((option, index) => (
+              <div key={option.id} className="admin-option-row">
+                <input
+                  value={option.label}
+                  onChange={(event) => updatePollOptionLabel(option.id, event.target.value)}
+                  placeholder={copy.optionPlaceholder(index)}
+                />
+                <span>
+                  {option.votes} votes
+                </span>
+                <button onClick={() => removePollOption(option.id)}>{copy.remove}</button>
+              </div>
+            ))}
+          </div>
+          <div className="admin-actions">
+            <button onClick={addPollOption}>{copy.addOption}</button>
+            <button className="secondary" onClick={resetPollVotes}>
+              {copy.resetVotes}
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  function renderDataView() {
+    return (
+      <section className="data-view-shell">
+        <div className="insight-panel data-view-panel">
+          <section className="data-view-header">
             <div className="panel-heading">
-              <Bot size={17} />
-              <span>{copy.stageReadout}</span>
+              <Activity size={16} />
+              <span>{copy.dataViewTitle}</span>
             </div>
-            <h2>{localAssistantSummary.focusLine}</h2>
-            <p>{localAssistantSummary.recommendation}</p>
-            <div className="assistant-pills">
-              <span>{localAssistantSummary.primarySignal}</span>
-              <span>
-                {duplicateGroups.length
-                  ? language === "fr"
-                    ? `${duplicateGroups.length} groupe${
-                        duplicateGroups.length === 1 ? "" : "s"
-                      } répété${duplicateGroups.length === 1 ? "" : "s"}`
-                    : `${duplicateGroups.length} repeat cluster${
-                        duplicateGroups.length === 1 ? "" : "s"
-                      }`
-                  : copy.freshMix}
-              </span>
-              <span>
-                {blockedWordCount || suspiciousBurstCount
-                  ? copy.safetyAlertsActive
-                  : copy.safetyLayerSteady}
-              </span>
-            </div>
-            <small>{localAssistantSummary.safetyLine}</small>
+            <p>{copy.dataViewDescription}</p>
           </section>
 
-          {adminMode && (
-            <section className="summary-card">
-              <div className="panel-heading">
-                <WandSparkles size={16} />
-                <span>{copy.openAiCommentSummary}</span>
-              </div>
-
-              <div className="summary-status">
-                <div className="status-pill">
-                  <KeyRound size={14} />
-                  <span>
-                    {activeApiKey
-                      ? activeApiKeySource === "browser"
-                        ? copy.usingBrowserKey
-                        : copy.usingEnvKey
-                      : copy.noApiKeyConnected}
-                  </span>
-                </div>
-                <div className="status-pill subtle">
-                  <Activity size={14} />
-                  <span>{openAiSettings.model}</span>
-                </div>
-              </div>
-
-              <div className="summary-note">{copy.summaryNote}</div>
-
-              <div className="summary-form">
-                <label className="admin-field">
-                  <span>{copy.openAiApiKey}</span>
-                  <input
-                    type="password"
-                    value={apiKeyDraft}
-                    onChange={(event) => setApiKeyDraft(event.target.value)}
-                    placeholder={
-                      ENV_OPENAI_API_KEY
-                        ? copy.envKeyPlaceholder
-                        : copy.browserKeyPlaceholder
-                    }
-                  />
-                </label>
-
-                <div className="summary-form-row">
-                  <label className="admin-field">
-                    <span>{copy.summaryModel}</span>
-                    <select
-                      value={openAiSettings.model}
-                      onChange={(event) =>
-                        setOpenAiSettings((prev) => ({
-                          ...prev,
-                          model: event.target.value,
-                        }))
-                      }
-                    >
-                      {SUMMARY_MODELS.map((model) => (
-                        <option key={model.value} value={model.value}>
-                          {model.label} - {model.helpers[language]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="toggle-field">
-                    <input
-                      type="checkbox"
-                      checked={openAiSettings.autoSummarize}
-                      onChange={(event) =>
-                        setOpenAiSettings((prev) => ({
-                          ...prev,
-                          autoSummarize: event.target.checked,
-                        }))
-                      }
-                    />
-                    <span>{copy.autoSummarize}</span>
-                  </label>
-                </div>
-
-                <div className="admin-actions">
-                  <button onClick={saveBrowserApiKey}>{copy.saveKey}</button>
-                  <button
-                    className="secondary"
-                    onClick={() => {
-                      setApiKeyDraft("");
-                      setOpenAiSettings((prev) => ({ ...prev, browserKey: "" }));
-                    }}
-                  >
-                    {copy.clearSavedKey}
-                  </button>
-                  <button
-                    className="secondary"
-                    onClick={() => void summarizeComments()}
-                    disabled={summaryLoading}
-                  >
-                    {summaryLoading ? (
-                      <>
-                        <RefreshCcw size={15} className="spin" />
-                        {copy.summarizing}
-                      </>
-                    ) : (
-                      <>
-                        <WandSparkles size={15} />
-                        {copy.summarizeNow}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="summary-output">
-                <div className="summary-output-top">
-                  <strong>{copy.generatedSummary}</strong>
-                  {savedSummary.lastSummaryAt && (
-                    <span>
-                      {formatClock(savedSummary.lastSummaryAt, language)} -{" "}
-                      {formatRelativeTime(savedSummary.lastSummaryAt, language)}
-                    </span>
-                  )}
-                </div>
-                {summaryError && <div className="summary-error">{summaryError}</div>}
-                <pre>{savedSummary.text || copy.noAiSummaryYet}</pre>
-              </div>
-            </section>
-          )}
-
-          {adminMode && (
-            <section className="admin-card">
-              <div className="panel-heading">
-                <Sparkles size={16} />
-                <span>{copy.adminPollControls}</span>
-              </div>
-              <div className="admin-note">{copy.adminPollNote}</div>
-              <label className="admin-field">
-                <span>{copy.pollQuestionLabel}</span>
-                <input
-                  value={poll.question}
-                  onChange={(event) => updatePollQuestion(event.target.value)}
-                  placeholder={copy.pollQuestionPlaceholder}
-                />
-              </label>
-              <div className="admin-option-list">
-                {poll.options.map((option, index) => (
-                  <div key={option.id} className="admin-option-row">
-                    <input
-                      value={option.label}
-                      onChange={(event) =>
-                        updatePollOptionLabel(option.id, event.target.value)
-                      }
-                      placeholder={copy.optionPlaceholder(index)}
-                    />
-                    <span>
-                      {option.votes} {language === "fr" ? "votes" : "votes"}
-                    </span>
-                    <button onClick={() => removePollOption(option.id)}>{copy.remove}</button>
-                  </div>
-                ))}
-              </div>
-              <div className="admin-actions">
-                <button onClick={addPollOption}>{copy.addOption}</button>
-                <button className="secondary" onClick={resetPollVotes}>
-                  {copy.resetVotes}
-                </button>
-              </div>
-            </section>
-          )}
+          {renderStageReadoutCard()}
 
           <section className="metric-grid">
-            <Metric
-              icon={<Search size={16} />}
-              label={copy.indexedQuestions}
-              value={indexedQuestions}
-              helper={copy.indexedQuestionsHelper}
-            />
+            {indexedQuestionsCard}
             <Metric
               icon={<Sparkles size={16} />}
               label={copy.duplicateQuestions}
@@ -3118,7 +3045,7 @@ function App() {
                 displayedFeed.slice(0, 12).map((pulse) => (
                   <article key={pulse.id} className="feed-item">
                     <div className="feed-item-top">
-                      <strong>{pulse.text}</strong>
+                      <strong>{pulse.displayText ?? pulse.text}</strong>
                       <span className="pulse-kind">{getCategoryLabel(pulse.type, language)}</span>
                     </div>
                     <div className="feed-meta">
@@ -3131,7 +3058,322 @@ function App() {
               )}
             </div>
           </section>
+
+          {renderAdminSections()}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <div className="language-corner" aria-label={copy.languageLabel}>
+        <button
+          className={language === "en" ? "active" : ""}
+          onClick={() => setPreferredLanguage("en")}
+        >
+          EN
+        </button>
+        <button
+          className={language === "fr" ? "active" : ""}
+          onClick={() => setPreferredLanguage("fr")}
+        >
+          FR
+        </button>
+      </div>
+
+      <div className="view-corner" aria-label={copy.dataViewLabel}>
+        <button
+          className={viewMode === "live" ? "active" : ""}
+          onClick={() => setViewMode("live")}
+        >
+          {copy.liveView}
+        </button>
+        <button
+          className={viewMode === "data" ? "active" : ""}
+          onClick={() => setViewMode("data")}
+        >
+          {copy.dataView}
+        </button>
+      </div>
+
+      <header className="topbar">
+        <section className="brand-panel">
+          <div className="brand-meta">
+            <div className="live-pill">
+              <span className="live-dot" />
+              {copy.live}
+            </div>
+            <div className="meta-chip">Cloud Summit x Science World</div>
+            <div className="meta-chip">{adminMode ? copy.adminAccessMode : copy.audienceMode}</div>
+          </div>
+
+          <div className="brand-copy">
+            <h1>StagePulse Map</h1>
+            <p>{copy.brandDescription}</p>
+          </div>
+
+          <div className="brand-footer">
+            <div>
+              <span>{copy.anonymousBrowser}</span>
+              <strong>{browserId.slice(-10)}</strong>
+            </div>
+            <div className="mini-stat">
+              <span>{copy.liveComments}</span>
+              <strong>{totalPulses}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="poll-panel">
+          <div className="panel-heading">
+            <Vote size={16} />
+            <span>{copy.audiencePoll}</span>
+          </div>
+          <h2 className="poll-question">{poll.question}</h2>
+          <p className="panel-copy">{copy.pollDescription}</p>
+          <div className="poll-options">
+            {poll.options.map((option, index) => {
+              const percent = totalVotes ? Math.round((option.votes / totalVotes) * 100) : 0;
+              return (
+                <button
+                  key={option.id}
+                  className={`poll-choice ${
+                    selectedPollOptionId === option.id ? "selected" : ""
+                  }`}
+                  style={{ "--fill": `${percent}%` }}
+                  onClick={() => handleVote(option.id)}
+                >
+                  <span>{displayPollLabel(option.label, index)}</span>
+                  <strong>{percent}%</strong>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="popular-card">
+          <span>{copy.mostPopularVote}</span>
+          <strong>{mostPopularVote.label}</strong>
+          <small>
+            {mostPopularVote.votes} {language === "fr" ? "votes en direct" : "live votes"} -{" "}
+            {mostPopularShare}% {language === "fr" ? "de part" : "share"}
+          </small>
+          <div className="turnout-pill">{copy.audienceVotesCaptured(totalVotes)}</div>
+        </section>
+      </header>
+
+      <main className={`workspace ${viewMode === "data" ? "data-mode" : ""}`}>
+        {viewMode === "live" ? (
+          <>
+        <section className="map-card">
+          <div className="map-toolbar">
+            <div className="level-tabs">
+              {Object.entries(LEVELS).map(([level, value]) => (
+                <button
+                  key={level}
+                  className={activeLevel === level ? "active" : ""}
+                  onClick={() => handleLevelChange(level)}
+                >
+                  {value.labels[language]}
+                </button>
+              ))}
+            </div>
+
+            <button
+              className={addBoothMode ? "add-booth active" : "add-booth"}
+              onClick={() => {
+                const nextValue = !addBoothMode;
+                setAddBoothMode(nextValue);
+                if (!nextValue) {
+                  setDraftBooth(null);
+                  setBoothName("");
+                }
+              }}
+            >
+              <CirclePlus size={16} />
+              {addBoothMode ? copy.clickMapToPlaceBooth : copy.addBooth}
+            </button>
+
+            <label className="search-box">
+              <Search size={16} />
+              <input
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder={copy.searchPlaceholder}
+              />
+            </label>
+          </div>
+
+          <div className={`map-stage ${activeLevel}`} onClick={handleMapClick}>
+            <img src={activeLevelMeta.image} alt={`${getLevelLabel(activeLevel, language)} map`} />
+
+            <div className="map-stage-label">
+              <strong>{getLevelLabel(activeLevel, language)}</strong>
+              <span>{getLevelCaption(activeLevel, language)}</span>
+            </div>
+
+            <div className="map-instruction">
+              {addBoothMode
+                ? copy.addModeInstruction
+                : copy.defaultMapInstruction}
+            </div>
+
+            {visibleBooths.map((booth) => (
+              <button
+                key={booth.id}
+                className={`map-pin ${booth.color} ${
+                  selectedBoothId === booth.id ? "selected" : ""
+                }`}
+                style={{ left: `${booth.x}%`, top: `${booth.y}%` }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedBoothId(booth.id);
+                  setAddBoothMode(false);
+                  setDraftBooth(null);
+                }}
+                title={booth.name}
+              >
+                <MapPin size={18} />
+                <span>{booth.shortName}</span>
+              </button>
+            ))}
+
+            {draftBooth && draftBooth.level === activeLevel && (
+              <div
+                className={`draft-pin ${draftBooth.color}`}
+                style={{ left: `${draftBooth.x}%`, top: `${draftBooth.y}%` }}
+              >
+                <MapPin size={18} />
+                New Booth
+              </div>
+            )}
+
+            {selectedBooth && selectedBooth.level === activeLevel && (
+              <div
+                className={`map-bubble ${selectedBooth.x > 62 ? "flip" : ""}`}
+                style={{ left: `${selectedBooth.x}%`, top: `${selectedBooth.y}%` }}
+              >
+                <strong>{selectedBooth.shortName}</strong>
+                <p>
+                  {(selectedBooth.pulses[0]
+                    ? getDisplayCommentText(selectedBooth.pulses[0].text)
+                    : null) ??
+                    (language === "fr"
+                      ? "Aucune impulsion pour l’instant. Soyez la première voix du public dans cette zone."
+                      : "No pulses yet. Be the first audience voice in this zone.")}
+                </p>
+                <small>
+                  {selectedBooth.pulses[0]
+                    ? `${getCategoryLabel(selectedBooth.pulses[0].type, language)} - ${formatClock(
+                        selectedBooth.pulses[0].createdAt,
+                        language
+                      )}`
+                    : language === "fr"
+                      ? "En attente de la première impulsion"
+                      : "Waiting for the first pulse"}
+                </small>
+              </div>
+            )}
+          </div>
+
+          <div className="composer">
+            <div className="composer-main">
+              <div className="selected-zone">
+                <CheckCircle2 size={16} />
+                {draftBooth
+                  ? copy.newBoothOnLevel(getLevelLabel(draftBooth.level, language))
+                  : copy.selectedBooth(selectedBooth?.name ?? copy.selectedFallback)}
+              </div>
+
+              <div className="context-strip">
+                <div>
+                  <span>{copy.currentLevel}</span>
+                  <strong>{getLevelLabel(activeLevel, language)}</strong>
+                </div>
+                <div>
+                  <span>{copy.visibleBooths}</span>
+                  <strong>{visibleBooths.length}</strong>
+                </div>
+                <div>
+                  <span>{copy.levelPulses}</span>
+                  <strong>{levelPulseCount}</strong>
+                </div>
+              </div>
+
+              {adminMode && selectedBooth?.custom && !draftBooth && (
+                <div className="new-booth-actions">
+                  <button className="secondary" onClick={removeSelectedBooth}>
+                    {copy.removeBooth}
+                  </button>
+                </div>
+              )}
+
+              {draftBooth ? (
+                <div className="new-booth-form">
+                  <input
+                    value={boothName}
+                    onChange={(event) => setBoothName(event.target.value)}
+                    placeholder={copy.newBoothPlaceholder}
+                  />
+                  <div className="new-booth-actions">
+                    <button className="secondary" onClick={cancelBoothCreation}>
+                      {copy.cancel}
+                    </button>
+                    <button onClick={createBooth}>{copy.createBooth}</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <textarea
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    placeholder={copy.messagePlaceholder}
+                  />
+                  <div className="category-row">
+                    {CATEGORIES.map((item) => (
+                      <button
+                        key={item}
+                        className={category === item ? "active" : ""}
+                        onClick={() => setCategory(item)}
+                      >
+                        {getCategoryLabel(item, language)}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!draftBooth && (
+              <button className="send-button" onClick={submitPulse}>
+                <Send size={17} />
+                {copy.sendPulse}
+              </button>
+            )}
+          </div>
+        </section>
+
+        <aside className="insight-panel live-overview-panel">
+          {renderStageReadoutCard()}
+
+          <section className="metric-grid metric-grid-single">{indexedQuestionsCard}</section>
+
+          {adminMode && (
+            <section className="admin-preview-card">
+              <div className="panel-heading">
+                <Sparkles size={16} />
+                <span>{copy.adminTools}</span>
+              </div>
+              <p>{copy.adminToolsIntro}</p>
+              <button onClick={() => setViewMode("data")}>{copy.dataView}</button>
+            </section>
+          )}
         </aside>
+          </>
+        ) : (
+          renderDataView()
+        )}
       </main>
 
       <footer className="site-footnote">
